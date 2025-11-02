@@ -1,0 +1,3 @@
+1. Core Logic (Rust): Build the core functionality in Rust, focusing on a command-line interface (CLI) to detect and control monitor brightness.
+2. System Tray GUI (Rust): Create a graphical user interface (GUI) that resides in the system tray for user interaction.
+3. UI/UX: Design a clean, modern, and intuitive UI with features like sliders for each monitor and brightness presets.
