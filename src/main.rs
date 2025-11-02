@@ -1,15 +1,19 @@
 #![windows_subsystem = "windows"]
 
+mod brightness;
+
 use std::ffi::c_void;
 use windows::{
     core::*,
-    Win32::Foundation::*,
-    Win32::Graphics::Gdi::*,
-    Win32::UI::ColorSystem::*,
-    Win32::UI::WindowsAndMessaging::*,
-    Win32::UI::Shell::*,
-    Win32::System::LibraryLoader::*,
+    Win32::Foundation::{BOOL, FALSE, HWND, LPARAM, LRESULT, POINT, RECT, WPARAM},
+    Win32::Graphics::Gdi::{CreateDCW, DeleteDC, EnumDisplayMonitors, GetMonitorInfoW, HDC, HMONITOR, MONITORINFO, MONITORINFOEXW},
+    Win32::UI::ColorSystem::SetDeviceGammaRamp,
+    Win32::UI::WindowsAndMessaging::{AppendMenuW, CreatePopupMenu, CreateWindowExW, DefWindowProcW, DispatchMessageW, GetCursorPos, GetMessageW, LoadIconW, PostQuitMessage, RegisterClassW, SetForegroundWindow, TrackPopupMenu, TranslateMessage, CW_USEDEFAULT, IDI_APPLICATION, MF_SEPARATOR, MF_STRING, MSG, TPM_BOTTOMALIGN, TPM_RIGHTALIGN, WM_APP, WM_COMMAND, WM_RBUTTONUP, WNDCLASSW, WS_OVERLAPPEDWINDOW, WINDOW_EX_STYLE},
+    Win32::UI::Shell::{Shell_NotifyIconW, NOTIFYICONDATAW, NIF_ICON, NIF_MESSAGE, NIF_TIP, NIM_ADD, NIM_DELETE},
+    Win32::System::LibraryLoader::{GetModuleHandleW},
 };
+
+use brightness::{BrightnessController, BrightnessMode};
 
 const WM_TRAYICON: u32 = WM_APP + 1;
 const ID_EXIT: u32 = 1;
@@ -18,6 +22,9 @@ const ID_BRIGHTNESS_50: u32 = 3;
 const ID_BRIGHTNESS_75: u32 = 4;
 const ID_BRIGHTNESS_100: u32 = 5;
 const ID_RESET_BRIGHTNESS: u32 = 6;
+const ID_TOGGLE_MODE: u32 = 7;
+
+static mut CURRENT_MODE: BrightnessMode = BrightnessMode::Software;
 
 fn main() -> Result<()> {
     unsafe {
@@ -89,6 +96,7 @@ extern "system" fn wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM
                     let _ = AppendMenuW(hmenu, MF_STRING, ID_BRIGHTNESS_100 as usize, w!("100%"));
                     let _ = AppendMenuW(hmenu, MF_STRING, ID_RESET_BRIGHTNESS as usize, w!("Reset"));
                     let _ = AppendMenuW(hmenu, MF_SEPARATOR, 0, None);
+                    let _ = AppendMenuW(hmenu, MF_STRING, ID_TOGGLE_MODE as usize, w!("Toggle Mode"));
                     let _ = AppendMenuW(hmenu, MF_STRING, ID_EXIT as usize, w!("Exit"));
                 }
 
@@ -108,15 +116,29 @@ extern "system" fn wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM
             LRESULT(0)
         }
         WM_COMMAND => {
+            let controller = unsafe { BrightnessController::new(CURRENT_MODE) };
             match wparam.0 as u32 {
                 ID_EXIT => {
                     unsafe { PostQuitMessage(0) };
                 }
-                ID_BRIGHTNESS_25 => set_brightness(0.25),
-                ID_BRIGHTNESS_50 => set_brightness(0.5),
-                ID_BRIGHTNESS_75 => set_brightness(0.75),
-                ID_BRIGHTNESS_100 => set_brightness(1.0),
-                ID_RESET_BRIGHTNESS => set_brightness(1.0),
+                ID_TOGGLE_MODE => unsafe {
+                    match CURRENT_MODE {
+                        BrightnessMode::Software => {
+                            CURRENT_MODE = BrightnessMode::Hardware;
+                            set_software_brightness(1.0);
+                        }
+                        BrightnessMode::Hardware => {
+                            CURRENT_MODE = BrightnessMode::Software;
+                            let hardware_controller = BrightnessController::new(BrightnessMode::Hardware);
+                            hardware_controller.set_brightness(100, |_| {});
+                        }
+                    }
+                },
+                ID_BRIGHTNESS_25 => controller.set_brightness(25, set_software_brightness),
+                ID_BRIGHTNESS_50 => controller.set_brightness(50, set_software_brightness),
+                ID_BRIGHTNESS_75 => controller.set_brightness(75, set_software_brightness),
+                ID_BRIGHTNESS_100 => controller.set_brightness(100, set_software_brightness),
+                ID_RESET_BRIGHTNESS => controller.set_brightness(100, set_software_brightness),
                 _ => (),
             }
             LRESULT(0)
@@ -125,7 +147,7 @@ extern "system" fn wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM
     }
 }
 
-fn set_brightness(brightness: f32) {
+fn set_software_brightness(brightness: f32) {
     let mut monitors: Vec<String> = Vec::new();
     let lparam = LPARAM(&mut monitors as *mut _ as isize);
 
@@ -163,7 +185,7 @@ fn set_brightness(brightness: f32) {
 }
 
 extern "system" fn monitor_enum_proc_for_set_brightness(
-    _hmonitor: HMONITOR,
+    hmonitor: HMONITOR,
     _hdc_monitor: HDC,
     _lprc_monitor: *mut RECT,
     lparam: LPARAM,
@@ -174,7 +196,7 @@ extern "system" fn monitor_enum_proc_for_set_brightness(
     monitor_info_ex.monitorInfo.cbSize = std::mem::size_of::<MONITORINFOEXW>() as u32;
 
     unsafe {
-        if GetMonitorInfoW(_hmonitor, &mut monitor_info_ex as *mut _ as *mut MONITORINFO) == FALSE {
+        if GetMonitorInfoW(hmonitor, &mut monitor_info_ex as *mut _ as *mut MONITORINFO) == FALSE {
             return BOOL(1);
         }
     }

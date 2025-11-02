@@ -1,3 +1,65 @@
-1. Core Logic (Rust): Build the core functionality in Rust, focusing on a command-line interface (CLI) to detect and control monitor brightness.
-2. System Tray GUI (Rust): Create a graphical user interface (GUI) that resides in the system tray for user interaction.
-3. UI/UX: Design a clean, modern, and intuitive UI with features like sliders for each monitor and brightness presets.
+# Candela Project Plan
+
+This plan outlines the development of Candela, a Windows application for controlling screen brightness. The project is structured into several modules to ensure a clean and maintainable codebase.
+
+## Phase 1: Core Functionality
+
+### 1.1. Brightness Control Module (`brightness.rs`)
+
+-   [x] **Software Brightness:**
+    -   [x] Implement `set_software_brightness` using `SetDeviceGammaRamp`.
+    -   [x] Refactor the existing brightness logic from `main.rs` into this module.
+-   [x] **Hardware Brightness (DDC/CI):**
+    -   [x] Add the `ddc-winapi` crate as a dependency.
+    -   [x] Implement `set_hardware_brightness` to set the monitor's brightness using DDC/CI.
+    -   [x] Handle errors gracefully for monitors that do not support DDC/CI.
+-   [x] **Unified Brightness API:**
+    -   [x] Create a unified `BrightnessController` struct that can switch between software and hardware modes.
+    -   [x] It will hold the current mode (software/hardware) and provide a single `set_brightness` method.
+-   [x] **Mode Toggling:**
+    -   [x] Implement a toggle in the tray menu to switch between `Software` and `Hardware` modes.
+    -   [x] When switching, reset the other brightness control to 100% to avoid conflicts.
+
+## Phase 2: User Interface
+
+### 2.1. System Tray Module (`tray.rs`)
+
+-   [x] **Basic Tray Icon:**
+    -   Create a system tray icon and a basic right-click menu. (Already done in `main.rs`)
+    -   Refactor the tray icon logic from `main.rs` into this module.
+-   [ ] **UI Window (`gui.rs`):**
+    -   Choose a lightweight GUI framework (e.g., `egui`, `iced`, or raw `windows-sys` for a simple popup). `egui` is a good candidate for its simplicity.
+    -   Create a popup window that appears when the tray icon is left-clicked.
+    -   The window should contain:
+        -   A slider for brightness control (1-100).
+        -   A checkbox to switch between "Software" and "Hardware" brightness.
+-   [ ] **UI State Management:**
+    -   The UI should reflect the current brightness level.
+    -   The checkbox state should be saved and loaded, so the user's preference is remembered.
+
+## Phase 3: Integration and Refinement
+
+### 3.1. Main Application Logic (`main.rs`)
+
+-   [ ] **Module Integration:**
+    -   The `main.rs` file will be responsible for initializing the application.
+    -   It will create the `BrightnessController` and the system tray UI.
+    -   It will handle communication between the UI and the brightness controller.
+-   [ ] **Event Handling:**
+    -   Handle events from the UI (slider changes, checkbox toggles).
+    -   Update the brightness when the slider is moved.
+    -   Switch the brightness control mode when the checkbox is toggled.
+-   [ ] **Configuration:**
+    -   Implement saving and loading of user settings (e.g., the preferred brightness mode) to a configuration file.
+-   [ ] **Error Handling and Logging:**
+    -   Implement robust error handling throughout the application.
+    -   Add logging to help with debugging.
+
+## Phase 4: Build and Distribution
+
+-   [ ] **Application Icon:**
+    -   Create a proper application icon and embed it in the executable.
+-   [ ] **Build Script:**
+    -   Create a build script to simplify the build process.
+-   [ ] **Installer:**
+    -   Consider creating an installer for easy distribution.
