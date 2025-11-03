@@ -23,15 +23,15 @@ This document outlines the development plan for the Candela project. The primary
 
 **Core Features:**
 - Application runs automatically at Windows startup and runs in the system tray
-- Left click on tray icon shows a vertical slider (1-100) that changes monitor brightness
-- Toggle box underneath slider to switch between hardware (monitor via HDMI/DP) and software brightness
-- Shows current brightness values for both software and hardware with clear indication of which is active
+- Left click on tray icon shows a compact window with dual vertical sliders (software and hardware brightness, 1-100)
+- Each slider directly controls its respective brightness system independently (no toggle box)
+- Shows current brightness percentages for both software and hardware controls
 - Right click shows "Exit" and "Settings" options
 - Settings window has "Start on Windows" checkbox and default mode toggle (software/hardware)
 
 **Technical Implementation:**
 - Written in C++ using native Win32 API
-- Hardware brightness control via DDC/CI protocol
+- Hardware brightness control via DDC/CI protocol using Windows Monitor Configuration API
 - Software brightness control via gamma adjustment
 - Settings persistence using Windows registry
 - Startup automation via Windows registry
@@ -42,6 +42,29 @@ This document outlines the development plan for the Candela project. The primary
 - For distribution, create installer using NSIS (Nullsoft Scriptable Install System) or WiX Toolset
 - Executable will be placed in program files and added to Windows startup via registry
 - Static linking preferred to avoid DLL dependencies
+
+**What We've Accomplished:**
+- **Complete migration from Rust to C++:** Successfully converted the entire codebase from Rust to C++
+- **System tray implementation:** Created a professional system tray application that runs silently
+- **Dual slider UI:** Implemented two independent vertical sliders (software and hardware) side-by-side
+- **Wider sliders for visibility:** Made sliders 63px wide for better visibility and usability
+- **Compact window design:** Reduced the overall window size from 200px to 170px wide while maintaining functionality
+- **Independent control:** Each slider now independently controls its respective brightness system
+- **Brightness value displays:** Shows current brightness percentages below each slider
+- **Right-click functionality:** Context menu with "Exit" and "Settings" options
+- **Settings persistence:** Uses Windows registry to save user preferences
+- **Windows startup integration:** Option to start automatically with Windows
+- **DDC/CI hardware control:** Uses Windows Monitor Configuration API for hardware brightness
+- **Gamma software control:** Software brightness via gamma ramp adjustment
+- **Professional build system:** CMake-based build system with proper linking
+- **Installer creation:** Provided NSIS installer script for Windows distribution
+- **No mode toggle:** Removed the checkbox for switching between modes - each slider controls independently
+- **Clean design:** Removed percentage markers (0% and 100%) for a cleaner look
+- **Improved positioning:** Optimized slider positioning and alignment for better user experience
+- **Hidden main window:** Application runs in system tray only, no main window appears
+- **ESC/Enter support:** Added keyboard support to close the slider window
+- **Multi-monitor support:** Hardware brightness control works across all connected monitors
+- **Proper error handling:** Added error checking and user feedback mechanisms
 
 **Phase 1: C++ Project Setup and Basic Structure**
 
@@ -58,8 +81,10 @@ This document outlines the development plan for the Candela project. The primary
 **Phase 3: User Interface**
 
 *   **3.1.** Implement vertical slider dialog for left-click
-*   **3.2.** Add hardware/software toggle control
+*   **3.2.** Add hardware/software toggle control (later removed as per requirements)
 *   **3.3.** Display current brightness values with active mode indicator
+*   **3.4.** Implement dual sliders for independent hardware and software control
+*   **3.5.** Optimize slider width and window size for better user experience
 
 **Phase 4: Settings and Startup**
 
@@ -72,6 +97,7 @@ This document outlines the development plan for the Candela project. The primary
 *   **5.1.** Add application icon
 *   **5.2.** Final testing and debugging
 *   **5.3.** Create Windows installer using NSIS or WiX Toolset
+*   **5.4.** UI refinements and user experience improvements
 
 **Technical Architecture:**
 - Pure Win32 C++ implementation for tray functionality and UI
