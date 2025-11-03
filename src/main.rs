@@ -2,15 +2,20 @@
 
 mod brightness;
 
-use std::ffi::c_void;
 use windows::{
     core::*,
-    Win32::Foundation::{BOOL, FALSE, HWND, LPARAM, LRESULT, POINT, RECT, WPARAM},
-    Win32::Graphics::Gdi::{CreateDCW, DeleteDC, EnumDisplayMonitors, GetMonitorInfoW, HDC, HMONITOR, MONITORINFO, MONITORINFOEXW},
-    Win32::UI::ColorSystem::SetDeviceGammaRamp,
-    Win32::UI::WindowsAndMessaging::{AppendMenuW, CreatePopupMenu, CreateWindowExW, DefWindowProcW, DispatchMessageW, GetCursorPos, GetMessageW, LoadIconW, PostQuitMessage, RegisterClassW, SetForegroundWindow, TrackPopupMenu, TranslateMessage, CW_USEDEFAULT, IDI_APPLICATION, MF_SEPARATOR, MF_STRING, MSG, TPM_BOTTOMALIGN, TPM_RIGHTALIGN, WM_APP, WM_COMMAND, WM_RBUTTONUP, WNDCLASSW, WS_OVERLAPPEDWINDOW, WINDOW_EX_STYLE},
-    Win32::UI::Shell::{Shell_NotifyIconW, NOTIFYICONDATAW, NIF_ICON, NIF_MESSAGE, NIF_TIP, NIM_ADD, NIM_DELETE},
-    Win32::System::LibraryLoader::{GetModuleHandleW},
+    Win32::Foundation::{HWND, LPARAM, LRESULT, POINT, WPARAM},
+    Win32::UI::WindowsAndMessaging::{
+        AppendMenuW, CreatePopupMenu, CreateWindowExW, DefWindowProcW, DispatchMessageW,
+        GetCursorPos, GetMessageW, LoadIconW, PostQuitMessage, RegisterClassW,
+        SetForegroundWindow, TrackPopupMenu, TranslateMessage, CW_USEDEFAULT, IDI_APPLICATION,
+        MF_SEPARATOR, MF_STRING, MSG, TPM_BOTTOMALIGN, TPM_RIGHTALIGN, WM_APP, WM_COMMAND,
+        WM_RBUTTONUP, WNDCLASSW, WS_OVERLAPPEDWINDOW,
+    },
+    Win32::UI::Shell::{
+        Shell_NotifyIconW, NOTIFYICONDATAW, NIF_ICON, NIF_MESSAGE, NIF_TIP, NIM_ADD, NIM_DELETE,
+    },
+    Win32::System::LibraryLoader::GetModuleHandleW,
 };
 
 use brightness::{BrightnessController, BrightnessMode};
@@ -41,7 +46,7 @@ fn main() -> Result<()> {
         RegisterClassW(&wc);
 
         let hwnd = CreateWindowExW(
-            WINDOW_EX_STYLE::default(),
+            Default::default(),
             class_name,
             w!("Candela"),
             WS_OVERLAPPEDWINDOW,
@@ -86,7 +91,9 @@ extern "system" fn wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM
         WM_TRAYICON => {
             if lparam.0 as u32 == WM_RBUTTONUP {
                 let mut point = POINT::default();
-                unsafe { let _ = GetCursorPos(&mut point); };
+                unsafe {
+                    let _ = GetCursorPos(&mut point);
+                };
 
                 let hmenu = unsafe { CreatePopupMenu() }.unwrap();
                 unsafe {
@@ -125,91 +132,27 @@ extern "system" fn wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM
                     match CURRENT_MODE {
                         BrightnessMode::Software => {
                             CURRENT_MODE = BrightnessMode::Hardware;
-                            set_software_brightness(1.0);
+                            // Reset software brightness to full
+                            let software_controller = BrightnessController::new(BrightnessMode::Software);
+                            software_controller.set_brightness(100);
                         }
                         BrightnessMode::Hardware => {
                             CURRENT_MODE = BrightnessMode::Software;
+                            // Reset hardware brightness to full
                             let hardware_controller = BrightnessController::new(BrightnessMode::Hardware);
-                            hardware_controller.set_brightness(100, |_| {});
+                            hardware_controller.set_brightness(100);
                         }
                     }
                 },
-                ID_BRIGHTNESS_25 => controller.set_brightness(25, set_software_brightness),
-                ID_BRIGHTNESS_50 => controller.set_brightness(50, set_software_brightness),
-                ID_BRIGHTNESS_75 => controller.set_brightness(75, set_software_brightness),
-                ID_BRIGHTNESS_100 => controller.set_brightness(100, set_software_brightness),
-                ID_RESET_BRIGHTNESS => controller.set_brightness(100, set_software_brightness),
+                ID_BRIGHTNESS_25 => controller.set_brightness(25),
+                ID_BRIGHTNESS_50 => controller.set_brightness(50),
+                ID_BRIGHTNESS_75 => controller.set_brightness(75),
+                ID_BRIGHTNESS_100 => controller.set_brightness(100),
+                ID_RESET_BRIGHTNESS => controller.set_brightness(100),
                 _ => (),
             }
             LRESULT(0)
         }
         _ => unsafe { DefWindowProcW(hwnd, msg, wparam, lparam) },
     }
-}
-
-fn set_software_brightness(brightness: f32) {
-    let mut monitors: Vec<String> = Vec::new();
-    let lparam = LPARAM(&mut monitors as *mut _ as isize);
-
-    unsafe {
-        if EnumDisplayMonitors(
-            HDC::default(),
-            None,
-            Some(monitor_enum_proc_for_set_brightness),
-            lparam,
-        ) == FALSE {
-            // Handle error, maybe log it
-        };
-    }
-
-    for device_name in monitors {
-        let device_name_utf16: Vec<u16> = device_name.encode_utf16().chain(std::iter::once(0)).collect();
-        let hdc = unsafe { CreateDCW(PCWSTR(device_name_utf16.as_ptr()), PCWSTR::null(), PCWSTR::null(), None) };
-        if hdc.is_invalid() {
-            continue;
-        }
-
-        let mut ramp: [u16; 256 * 3] = [0; 256 * 3];
-        for i in 0..256 {
-            let value = (i as f32 * brightness * 255.0) as u16;
-            ramp[i] = value;
-            ramp[i + 256] = value;
-            ramp[i + 512] = value;
-        }
-
-        unsafe {
-            let _ = SetDeviceGammaRamp(hdc, ramp.as_ptr() as *const c_void);
-            let _ = DeleteDC(hdc);
-        }
-    }
-}
-
-extern "system" fn monitor_enum_proc_for_set_brightness(
-    hmonitor: HMONITOR,
-    _hdc_monitor: HDC,
-    _lprc_monitor: *mut RECT,
-    lparam: LPARAM,
-) -> BOOL {
-    let monitors = unsafe { &mut *(lparam.0 as *mut Vec<String>) };
-
-    let mut monitor_info_ex: MONITORINFOEXW = unsafe { std::mem::zeroed() };
-    monitor_info_ex.monitorInfo.cbSize = std::mem::size_of::<MONITORINFOEXW>() as u32;
-
-    unsafe {
-        if GetMonitorInfoW(hmonitor, &mut monitor_info_ex as *mut _ as *mut MONITORINFO) == FALSE {
-            return BOOL(1);
-        }
-    }
-
-    let device_name = String::from_utf16_lossy(
-        &monitor_info_ex.szDevice[..]
-            .iter()
-            .take_while(|&&c| c != 0)
-            .copied()
-            .collect::<Vec<u16>>(),
-    );
-
-    monitors.push(device_name);
-
-    BOOL(1) // Continue enumeration
 }

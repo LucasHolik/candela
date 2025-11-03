@@ -1,65 +1,45 @@
-# Candela Project Plan
+This document outlines the development plan for the Candela project. The primary goal is to build the application in a structured, modular, and expandable way.
 
-This plan outlines the development of Candela, a Windows application for controlling screen brightness. The project is structured into several modules to ensure a clean and maintainable codebase.
+**Rules of Engagement:**
+1.  We will follow the steps outlined in this plan.
+2.  Changes will be small, atomic, and verifiable.
+3.  **Only the user will execute `cargo` commands** (`check`, `build`, `run`). After I make a change, I will prompt you to run the necessary command.
 
-## Phase 1: Core Functionality
+### **Revised Project Plan: Candela**
 
-### 1.1. Brightness Control Module (`brightness.rs`)
+**Our Development Philosophy:**
 
--   [x] **Software Brightness:**
-    -   [x] Implement `set_software_brightness` using `SetDeviceGammaRamp`.
-    -   [x] Refactor the existing brightness logic from `main.rs` into this module.
--   [x] **Hardware Brightness (DDC/CI):**
-    -   [x] Add the `ddc-winapi` crate as a dependency.
-    -   [x] Implement `set_hardware_brightness` to set the monitor's brightness using DDC/CI.
-    -   [x] Handle errors gracefully for monitors that do not support DDC/CI.
--   [x] **Unified Brightness API:**
-    -   [x] Create a unified `BrightnessController` struct that can switch between software and hardware modes.
-    -   [x] It will hold the current mode (software/hardware) and provide a single `set_brightness` method.
--   [x] **Mode Toggling:**
-    -   [x] Implement a toggle in the tray menu to switch between `Software` and `Hardware` modes.
-    -   [x] When switching, reset the other brightness control to 100% to avoid conflicts.
+*   **Small, Atomic Changes:** We will make one logical change at a time.
+*   **Verify at Every Step:** After each change, you will run `cargo check` to ensure the project compiles.
+*   **Build and Test:** You will run `cargo build` and test the functionality of new features.
 
-## Phase 2: User Interface
+---
 
-### 2.1. System Tray Module (`tray.rs`)
+**Phase 1: Code Refactoring and Modularization (Our Immediate Focus)**
 
--   [x] **Basic Tray Icon:**
-    -   Create a system tray icon and a basic right-click menu. (Already done in `main.rs`)
-    -   Refactor the tray icon logic from `main.rs` into this module.
--   [ ] **UI Window (`gui.rs`):**
-    -   Choose a lightweight GUI framework (e.g., `egui`, `iced`, or raw `windows-sys` for a simple popup). `egui` is a good candidate for its simplicity.
-    -   Create a popup window that appears when the tray icon is left-clicked.
-    -   The window should contain:
-        -   A slider for brightness control (1-100).
-        -   A checkbox to switch between "Software" and "Hardware" brightness.
--   [ ] **UI State Management:**
-    -   The UI should reflect the current brightness level.
-    -   The checkbox state should be saved and loaded, so the user's preference is remembered.
+The goal is to clean up the existing code, establish a clear module structure, and remove unsafe patterns.
 
-## Phase 3: Integration and Refinement
+*   **1.1. Refactor `brightness.rs`:**
+    *   Move the `set_software_brightness` function and its helper `monitor_enum_proc` from `main.rs` into `brightness.rs`. The `BrightnessController` will then call its own internal functions.
+*   **1.2. Create `tray.rs` Module:**
+    *   Move all tray icon and menu creation logic from `main.rs` into a new `tray.rs` module. `main.rs` will become much simpler.
+*   **1.3. Introduce Safe State Management:**
+    *   Create an `AppState` struct in `main.rs` to own the `BrightnessController` and other shared data. This will allow us to remove the `static mut` variable.
 
-### 3.1. Main Application Logic (`main.rs`)
+**Phase 2: Basic UI Window with `egui`**
 
--   [ ] **Module Integration:**
-    -   The `main.rs` file will be responsible for initializing the application.
-    -   It will create the `BrightnessController` and the system tray UI.
-    -   It will handle communication between the UI and the brightness controller.
--   [ ] **Event Handling:**
-    -   Handle events from the UI (slider changes, checkbox toggles).
-    -   Update the brightness when the slider is moved.
-    -   Switch the brightness control mode when the checkbox is toggled.
--   [ ] **Configuration:**
-    -   Implement saving and loading of user settings (e.g., the preferred brightness mode) to a configuration file.
--   [ ] **Error Handling and Logging:**
-    -   Implement robust error handling throughout the application.
-    -   Add logging to help with debugging.
+*   **2.1.** Add `egui` dependencies.
+*   **2.2.** Create a `gui.rs` module for an `egui` window.
+*   **2.3.** Make the tray icon open this window on left-click.
 
-## Phase 4: Build and Distribution
+**Phase 3: Connecting UI to Functionality**
 
--   [ ] **Application Icon:**
-    -   Create a proper application icon and embed it in the executable.
--   [ ] **Build Script:**
-    -   Create a build script to simplify the build process.
--   [ ] **Installer:**
-    -   Consider creating an installer for easy distribution.
+*   **3.1.** Add a brightness slider to the UI.
+*   **3.2.** Add a mode switch (Software/Hardware) to the UI.
+*   **3.3.** Ensure the UI always reflects the true application state.
+
+**Phase 4: Persistence and Polish**
+
+*   **4.1.** Save and load user settings (mode, brightness).
+*   **4.2.** Improve error handling and provide user feedback.
+*   **4.3.** Add a final application icon and refine the tray menu.
