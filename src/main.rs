@@ -6,6 +6,7 @@ mod gui;
 
 use windows::{
     core::*,
+    Win32::Foundation::HWND,
     Win32::UI::WindowsAndMessaging::{
         CreateWindowExW, DispatchMessageW, GetMessageW, RegisterClassW,
         TranslateMessage, CW_USEDEFAULT, MSG, WNDCLASSW, WS_OVERLAPPEDWINDOW,
@@ -26,6 +27,9 @@ impl AppState {
         }
     }
 }
+
+// Global variable to track the slider window
+pub static mut SLIDER_WINDOW: HWND = HWND(0);
 
 fn main() -> Result<()> {
     unsafe {

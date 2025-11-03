@@ -3,7 +3,7 @@ use windows::{
     Win32::Foundation::{HWND, LPARAM, LRESULT, POINT, WPARAM},
     Win32::UI::WindowsAndMessaging::{
         AppendMenuW, CreatePopupMenu, DefWindowProcW, GetCursorPos, PostQuitMessage,
-        SetForegroundWindow, TrackPopupMenu, MF_SEPARATOR, MF_STRING, TPM_BOTTOMALIGN, TPM_RIGHTALIGN, WM_APP, WM_COMMAND,
+        SetForegroundWindow, TrackPopupMenu, ShowWindow, SW_SHOW, MF_SEPARATOR, MF_STRING, TPM_BOTTOMALIGN, TPM_RIGHTALIGN, WM_APP, WM_COMMAND,
         WM_LBUTTONDOWN, WM_RBUTTONDOWN, WM_NCCREATE, CREATESTRUCTW, SetWindowLongPtrW, GetWindowLongPtrW, GWLP_USERDATA,
     },
     Win32::UI::Shell::{
@@ -73,36 +73,63 @@ pub extern "system" fn wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LP
 
     match msg {
         WM_TRAYICON => {
-            if lparam.0 as u32 == WM_RBUTTONDOWN || lparam.0 as u32 == WM_LBUTTONDOWN {
-                let mut point = POINT::default();
-                unsafe {
-                    let _ = GetCursorPos(&mut point);
-                };
+            match lparam.0 as u32 {
+                WM_RBUTTONDOWN => {
+                    let mut point = POINT::default();
+                    unsafe {
+                        let _ = GetCursorPos(&mut point);
+                    };
 
-                let hmenu = unsafe { CreatePopupMenu() }.unwrap();
-                unsafe {
-                    let _ = AppendMenuW(hmenu, MF_STRING, ID_BRIGHTNESS_25 as usize, w!("25%"));
-                    let _ = AppendMenuW(hmenu, MF_STRING, ID_BRIGHTNESS_50 as usize, w!("50%"));
-                    let _ = AppendMenuW(hmenu, MF_STRING, ID_BRIGHTNESS_75 as usize, w!("75%"));
-                    let _ = AppendMenuW(hmenu, MF_STRING, ID_BRIGHTNESS_100 as usize, w!("100%"));
-                    let _ = AppendMenuW(hmenu, MF_STRING, ID_RESET_BRIGHTNESS as usize, w!("Reset"));
-                    let _ = AppendMenuW(hmenu, MF_SEPARATOR, 0, None);
-                    let _ = AppendMenuW(hmenu, MF_STRING, ID_TOGGLE_MODE as usize, w!("Toggle Mode"));
-                    let _ = AppendMenuW(hmenu, MF_STRING, ID_EXIT as usize, w!("Exit"));
-                }
+                    let hmenu = unsafe { CreatePopupMenu() }.unwrap();
+                    unsafe {
+                        let _ = AppendMenuW(hmenu, MF_STRING, ID_BRIGHTNESS_25 as usize, w!("25%"));
+                        let _ = AppendMenuW(hmenu, MF_STRING, ID_BRIGHTNESS_50 as usize, w!("50%"));
+                        let _ = AppendMenuW(hmenu, MF_STRING, ID_BRIGHTNESS_75 as usize, w!("75%"));
+                        let _ = AppendMenuW(hmenu, MF_STRING, ID_BRIGHTNESS_100 as usize, w!("100%"));
+                        let _ = AppendMenuW(hmenu, MF_STRING, ID_RESET_BRIGHTNESS as usize, w!("Reset"));
+                        let _ = AppendMenuW(hmenu, MF_SEPARATOR, 0, None);
+                        let _ = AppendMenuW(hmenu, MF_STRING, ID_TOGGLE_MODE as usize, w!("Toggle Mode"));
+                        let _ = AppendMenuW(hmenu, MF_STRING, ID_EXIT as usize, w!("Exit"));
+                    }
 
-                unsafe {
-                    let _ = SetForegroundWindow(hwnd);
-                    let _ = TrackPopupMenu(
-                        hmenu,
-                        TPM_RIGHTALIGN | TPM_BOTTOMALIGN,
-                        point.x,
-                        point.y,
-                        0,
-                        hwnd,
-                        None,
-                    );
+                    unsafe {
+                        let _ = SetForegroundWindow(hwnd);
+                        let _ = TrackPopupMenu(
+                            hmenu,
+                            TPM_RIGHTALIGN | TPM_BOTTOMALIGN,
+                            point.x,
+                            point.y,
+                            0,
+                            hwnd,
+                            None,
+                        );
+                    }
                 }
+                WM_LBUTTONDOWN => {
+                    // Handle left click - show the slider window
+                    // Only create one slider window at a time
+                    if unsafe { crate::SLIDER_WINDOW.0 != 0 } {
+                        // If slider already exists, bring it to front
+                        unsafe {
+                            SetForegroundWindow(crate::SLIDER_WINDOW);
+                            ShowWindow(crate::SLIDER_WINDOW, SW_SHOW);
+                        }
+                    } else {
+                        let mut point = POINT::default();
+                        unsafe {
+                            let _ = GetCursorPos(&mut point);
+                        }
+                        
+                        // Create and show the slider window at cursor position
+                        unsafe {
+                            if let Ok(slider_hwnd) = crate::gui::create_slider_window(point.x - 30, point.y - 250) {
+                                // Store the slider window handle to prevent multiple instances
+                                crate::SLIDER_WINDOW = slider_hwnd;
+                            }
+                        }
+                    }
+                }
+                _ => {}
             }
             LRESULT(0)
         }
