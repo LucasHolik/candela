@@ -2,10 +2,9 @@ use windows::{
     core::*,
     Win32::Foundation::{HWND, LPARAM, LRESULT, POINT, WPARAM},
     Win32::UI::WindowsAndMessaging::{
-        AppendMenuW, CreatePopupMenu, DefWindowProcW,
-        GetCursorPos, PostQuitMessage,
+        AppendMenuW, CreatePopupMenu, DefWindowProcW, GetCursorPos, PostQuitMessage,
         SetForegroundWindow, TrackPopupMenu, MF_SEPARATOR, MF_STRING, TPM_BOTTOMALIGN, TPM_RIGHTALIGN, WM_APP, WM_COMMAND,
-        WM_RBUTTONUP,
+        WM_RBUTTONUP, WM_NCCREATE, CREATESTRUCTW, SetWindowLongPtrW, GetWindowLongPtrW, GWLP_USERDATA,
     },
     Win32::UI::Shell::{
         Shell_NotifyIconW, NOTIFYICONDATAW, NIF_ICON, NIF_MESSAGE, NIF_TIP, NIM_ADD, NIM_DELETE,
@@ -13,6 +12,7 @@ use windows::{
 };
 
 use crate::brightness::{BrightnessController, BrightnessMode};
+use crate::AppState;
 
 const WM_TRAYICON: u32 = WM_APP + 1;
 const ID_EXIT: u32 = 1;
@@ -22,8 +22,6 @@ const ID_BRIGHTNESS_75: u32 = 4;
 const ID_BRIGHTNESS_100: u32 = 5;
 const ID_RESET_BRIGHTNESS: u32 = 6;
 const ID_TOGGLE_MODE: u32 = 7;
-
-static mut CURRENT_MODE: BrightnessMode = BrightnessMode::Software;
 
 pub fn create_tray(hwnd: HWND) -> Result<()> {
     let mut nid = NOTIFYICONDATAW {
@@ -57,6 +55,19 @@ pub fn remove_tray(hwnd: HWND) {
 }
 
 pub extern "system" fn wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
+    let app_state_ptr = unsafe { GetWindowLongPtrW(hwnd, GWLP_USERDATA) };
+
+    if app_state_ptr == 0 {
+        if msg == WM_NCCREATE {
+            let create_struct = unsafe { &*(lparam.0 as *const CREATESTRUCTW) };
+            let app_state = create_struct.lpCreateParams as *mut AppState;
+            unsafe { SetWindowLongPtrW(hwnd, GWLP_USERDATA, app_state as isize) };
+        }
+        return unsafe { DefWindowProcW(hwnd, msg, wparam, lparam) };
+    }
+
+    let app_state = unsafe { &mut *(app_state_ptr as *mut AppState) };
+
     match msg {
         WM_TRAYICON => {
             if lparam.0 as u32 == WM_RBUTTONUP {
@@ -93,21 +104,21 @@ pub extern "system" fn wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LP
             LRESULT(0)
         }
         WM_COMMAND => {
-            let controller = unsafe { BrightnessController::new(CURRENT_MODE) };
+            let controller = BrightnessController::new(app_state.brightness_mode);
             match wparam.0 as u32 {
                 ID_EXIT => {
                     unsafe { PostQuitMessage(0) };
                 }
-                ID_TOGGLE_MODE => unsafe {
-                    match CURRENT_MODE {
+                ID_TOGGLE_MODE => {
+                    match app_state.brightness_mode {
                         BrightnessMode::Software => {
-                            CURRENT_MODE = BrightnessMode::Hardware;
+                            app_state.brightness_mode = BrightnessMode::Hardware;
                             // Reset software brightness to full
                             let software_controller = BrightnessController::new(BrightnessMode::Software);
                             software_controller.set_brightness(100);
                         }
                         BrightnessMode::Hardware => {
-                            CURRENT_MODE = BrightnessMode::Software;
+                            app_state.brightness_mode = BrightnessMode::Software;
                             // Reset hardware brightness to full
                             let hardware_controller = BrightnessController::new(BrightnessMode::Hardware);
                             hardware_controller.set_brightness(100);

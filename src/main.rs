@@ -12,15 +12,34 @@ use windows::{
     Win32::System::LibraryLoader::GetModuleHandleW,
 };
 
+use brightness::BrightnessMode;
+
+pub struct AppState {
+    pub brightness_mode: BrightnessMode,
+}
+
+impl AppState {
+    pub fn new() -> Self {
+        Self {
+            brightness_mode: BrightnessMode::Software,
+        }
+    }
+}
+
 fn main() -> Result<()> {
     unsafe {
         let instance = GetModuleHandleW(None)?.into();
         let class_name = w!("CandelaTrayWindowClass");
 
+        let app_state = Box::new(AppState::new());
+        let app_state_ptr = Box::into_raw(app_state);
+
         let wc = WNDCLASSW {
             lpfnWndProc: Some(tray::wnd_proc),
             lpszClassName: class_name,
             hInstance: instance,
+            // Pass the app_state_ptr as the lpfnWndProc parameter
+            cbWndExtra: std::mem::size_of::<*mut AppState>() as i32,
             ..Default::default()
         };
 
@@ -38,7 +57,7 @@ fn main() -> Result<()> {
             None,
             None,
             instance,
-            None,
+            Some(app_state_ptr as *mut std::ffi::c_void),
         );
 
         tray::create_tray(hwnd)?;
@@ -50,6 +69,9 @@ fn main() -> Result<()> {
         }
 
         tray::remove_tray(hwnd);
+
+        // Clean up the AppState when the application exits
+        let _ = Box::from_raw(app_state_ptr);
     }
 
     Ok(())
