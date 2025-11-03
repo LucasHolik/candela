@@ -2,6 +2,7 @@
 
 mod brightness;
 mod tray;
+mod gui;
 
 use windows::{
     core::*,

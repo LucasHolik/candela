@@ -9,7 +9,10 @@ serde = { version = "1.0", features = ["derive"] }
 windows = { version = "0.52.0", features = ["Win32_Foundation", "Win32_Graphics_Gdi", "Win32_System_SystemServices", "Win32_Devices_Display", "Win32_UI_ColorSystem", "Win32_UI_WindowsAndMessaging", "Win32_UI_Shell", "Win32_System_LibraryLoader"] }
 ddc-winapi = "0.1.0"
 ddc = "0.1.0"
+eframe = "0.26"
+egui = "0.26"
+egui-winit = "0.26"
 
 [[bin]]
 name = "candela"
-windows-subsystem = "windows"
+windows-subsystem = "console"

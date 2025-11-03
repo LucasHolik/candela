@@ -15,20 +15,16 @@ This document outlines the development plan for the Candela project. The primary
 
 ---
 
-**Phase 1: Basic UI Window with `egui`**
+**Note:** Currently, the right-click menu is configured to open on both left and right clicks for testing purposes.
 
-*   **1.1.** Add `egui` dependencies.
-*   **1.2.** Create a `gui.rs` module for an `egui` window.
-*   **1.3.** Make the tray icon open this window on left-click.
+**Phase 1: Connecting UI to Functionality**
 
-**Phase 2: Connecting UI to Functionality**
+*   **1.1.** Add a brightness slider to the UI.
+*   **1.2.** Add a mode switch (Software/Hardware) to the UI.
+*   **1.3.** Ensure the UI always reflects the true application state.
 
-*   **2.1.** Add a brightness slider to the UI.
-*   **2.2.** Add a mode switch (Software/Hardware) to the UI.
-*   **2.3.** Ensure the UI always reflects the true application state.
+**Phase 2: Persistence and Polish**
 
-**Phase 3: Persistence and Polish**
-
-*   **3.1.** Save and load user settings (mode, brightness).
-*   **3.2.** Improve error handling and provide user feedback.
-*   **3.3.** Add a final application icon and refine the tray menu.
+*   **2.1.** Save and load user settings (mode, brightness).
+*   **2.2.** Improve error handling and provide user feedback.
+*   **2.3.** Add a final application icon and refine the tray menu.

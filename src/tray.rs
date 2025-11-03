@@ -4,7 +4,7 @@ use windows::{
     Win32::UI::WindowsAndMessaging::{
         AppendMenuW, CreatePopupMenu, DefWindowProcW, GetCursorPos, PostQuitMessage,
         SetForegroundWindow, TrackPopupMenu, MF_SEPARATOR, MF_STRING, TPM_BOTTOMALIGN, TPM_RIGHTALIGN, WM_APP, WM_COMMAND,
-        WM_RBUTTONUP, WM_NCCREATE, CREATESTRUCTW, SetWindowLongPtrW, GetWindowLongPtrW, GWLP_USERDATA,
+        WM_LBUTTONDOWN, WM_RBUTTONDOWN, WM_NCCREATE, CREATESTRUCTW, SetWindowLongPtrW, GetWindowLongPtrW, GWLP_USERDATA,
     },
     Win32::UI::Shell::{
         Shell_NotifyIconW, NOTIFYICONDATAW, NIF_ICON, NIF_MESSAGE, NIF_TIP, NIM_ADD, NIM_DELETE,
@@ -54,6 +54,9 @@ pub fn remove_tray(hwnd: HWND) {
     unsafe { Shell_NotifyIconW(NIM_DELETE, &nid) };
 }
 
+
+
+
 pub extern "system" fn wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
     let app_state_ptr = unsafe { GetWindowLongPtrW(hwnd, GWLP_USERDATA) };
 
@@ -70,7 +73,7 @@ pub extern "system" fn wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LP
 
     match msg {
         WM_TRAYICON => {
-            if lparam.0 as u32 == WM_RBUTTONUP {
+            if lparam.0 as u32 == WM_RBUTTONDOWN || lparam.0 as u32 == WM_LBUTTONDOWN {
                 let mut point = POINT::default();
                 unsafe {
                     let _ = GetCursorPos(&mut point);
