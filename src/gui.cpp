@@ -87,7 +87,7 @@ void ShowBrightnessSlider(HWND parent)
 
     // Create the brightness slider window
     g_hwnd_brightness = CreateWindowEx(
-        WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE,
+        WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
         L"CandelaBrightnessSlider",
         L"Brightness",
         WS_POPUP,
@@ -166,6 +166,7 @@ void ShowBrightnessSlider(HWND parent)
     // Show the window
     ShowWindow(g_hwnd_brightness, SW_SHOW);
     UpdateWindow(g_hwnd_brightness);
+    SetForegroundWindow(g_hwnd_brightness);
 }
 
 LRESULT CALLBACK BrightnessSliderProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -230,39 +231,27 @@ LRESULT CALLBACK BrightnessSliderProc(HWND hwnd, UINT message, WPARAM wParam, LP
         g_hwnd_current_brightness = nullptr;
         g_hwnd_software_value = nullptr;
         g_hwnd_hardware_value = nullptr;
-        g_hwnd_min_label = nullptr; // Still need to clear these even though they're not used
-        g_hwnd_max_label = nullptr; // Still need to clear these even though they're not used
+        g_hwnd_min_label = nullptr;
+        g_hwnd_max_label = nullptr;
         g_hwnd_software_label = nullptr;
         g_hwnd_hardware_label = nullptr;
         break;
     }
     case WM_KEYDOWN:
     {
-        if (wParam == VK_ESCAPE)
+        if (wParam == VK_ESCAPE || wParam == VK_RETURN)
         {
-            // Hide the window when ESC is pressed
+            // Hide the window when ESC or Enter is pressed
             ShowWindow(hwnd, SW_HIDE);
         }
-        else if (wParam == VK_RETURN)
-        {
-            // Hide the window when Enter is pressed
-            ShowWindow(hwnd, SW_HIDE);
-        }
-        break;
-    }
-    case WM_KILLFOCUS:
-    {
-        // Don't hide the window when it loses focus - this keeps it from disappearing when interacting with controls
-        // ShowWindow(hwnd, SW_HIDE);
         break;
     }
     case WM_ACTIVATE:
     {
-        // Handle activation/deactivation
+        // If the window is being deactivated, hide it.
         if (LOWORD(wParam) == WA_INACTIVE)
         {
-            // Don't hide on deactivation either, as this happens when clicking other controls
-            // ShowWindow(hwnd, SW_HIDE);
+            ShowWindow(hwnd, SW_HIDE);
         }
         break;
     }
