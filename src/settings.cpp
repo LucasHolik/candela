@@ -99,31 +99,8 @@ bool Settings::load()
         RegCloseKey(hKey);
     }
 
-    // Set start on boot in Windows registry if needed
-    HKEY hRunKey;
-    result = RegOpenKeyEx(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Run",
-                          0, KEY_WRITE, &hRunKey);
-
-    if (result == ERROR_SUCCESS)
-    {
-        if (m_startOnBoot)
-        {
-            // Get the current executable path
-            wchar_t exePath[MAX_PATH];
-            GetModuleFileName(nullptr, exePath, MAX_PATH);
-
-            // Add to startup
-            RegSetValueEx(hRunKey, L"Candela", 0, REG_SZ,
-                          reinterpret_cast<const BYTE *>(exePath),
-                          (wcslen(exePath) + 1) * sizeof(wchar_t));
-        }
-        else
-        {
-            // Remove from startup if not needed
-            RegDeleteValue(hRunKey, L"Candela");
-        }
-        RegCloseKey(hRunKey);
-    }
+    // Update startup registry based on loaded setting
+    updateStartupRegistry();
 
     return true;
 }
@@ -179,8 +156,15 @@ bool Settings::save() const
     RegCloseKey(hKey);
 
     // Update startup registry based on setting
+    updateStartupRegistry();
+
+    return true;
+}
+
+bool Settings::updateStartupRegistry() const
+{
     HKEY hRunKey;
-    result = RegOpenKeyEx(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Run",
+    LONG result = RegOpenKeyEx(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Run",
                           0, KEY_WRITE, &hRunKey);
 
     if (result == ERROR_SUCCESS)
@@ -189,20 +173,29 @@ bool Settings::save() const
         {
             // Get the current executable path
             wchar_t exePath[MAX_PATH];
-            GetModuleFileName(nullptr, exePath, MAX_PATH);
-
-            // Add to startup
-            RegSetValueEx(hRunKey, L"Candela", 0, REG_SZ,
-                          reinterpret_cast<const BYTE *>(exePath),
-                          (wcslen(exePath) + 1) * sizeof(wchar_t));
+            DWORD pathLength = GetModuleFileName(nullptr, exePath, MAX_PATH);
+            
+            if (pathLength > 0 && pathLength < MAX_PATH)
+            {
+                // Add to startup
+                result = RegSetValueEx(hRunKey, L"Candela", 0, REG_SZ,
+                              reinterpret_cast<const BYTE *>(exePath),
+                              (wcslen(exePath) + 1) * sizeof(wchar_t));
+            }
         }
         else
         {
             // Remove from startup if not needed
-            RegDeleteValue(hRunKey, L"Candela");
+            result = RegDeleteValue(hRunKey, L"Candela");
+            // ERROR_FILE_NOT_FOUND is acceptable when removing if key doesn't exist
+            if (result != ERROR_SUCCESS && result != ERROR_FILE_NOT_FOUND)
+            {
+                // Log or handle the error appropriately
+            }
         }
         RegCloseKey(hRunKey);
+        return (result == ERROR_SUCCESS || (m_startOnBoot == false && result == ERROR_FILE_NOT_FOUND));
     }
 
-    return true;
+    return false;
 }

@@ -14,6 +14,9 @@ public:
     // Save settings to registry
     bool save() const;
 
+    // Update startup registry based on setting
+    bool updateStartupRegistry() const;
+
     // Getters
     int getSoftwareBrightness() const { return m_softwareBrightness; }
     int getHardwareBrightness() const { return m_hardwareBrightness; }
