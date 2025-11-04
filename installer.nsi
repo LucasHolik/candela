@@ -38,7 +38,7 @@
 ;Pages
 
   !insertmacro MUI_PAGE_WELCOME
-  !insertmacro MUI_PAGE_LICENSE "license.txt"  ; You'll need to create this file
+  !insertmacro MUI_PAGE_LICENSE "LICENSE.txt"  ; 
   !insertmacro MUI_PAGE_DIRECTORY
   !insertmacro MUI_PAGE_INSTFILES
   !insertmacro MUI_PAGE_FINISH
@@ -60,9 +60,9 @@ Section "Candela" SecMain
   SetOutPath "$INSTDIR"
   
   ; Files to be installed
-  File "candela.exe"
-  File "readme.txt"  ; You can create this file with usage instructions
-  
+  File "build\candela.exe"
+  File "README.md"  ;
+
   ; Store installation folder
   WriteRegStr HKCU "Software\Candela" "" $INSTDIR
   
@@ -99,18 +99,7 @@ Section "Start Menu Shortcuts" SecShortcuts
   CreateShortCut "$SMPROGRAMS\Candela\Uninstall.lnk" "$INSTDIR\uninstall.exe"
 SectionEnd
 
-;--------------------------------
-;Descriptions
 
-  ;Language strings
-  LangString DESC_SecMain ${LANG_ENGLISH} "Main application files"
-  LangString DESC_SecShortcuts ${LANG_ENGLISH} "Start Menu shortcuts"
-
-  ;Assign language strings to sections
-  !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
-    !insertmacro MUI_DESCRIPTION_TEXT ${SecMain} $(DESC_SecMain)
-    !insertmacro MUI_DESCRIPTION_TEXT ${SecShortcuts} $(DESC_SecShortcuts)
-  !insertmacro MUI_FUNCTION_DESCRIPTION_END
 
 ;--------------------------------
 ;Uninstaller Section

@@ -6,8 +6,6 @@
 #include <physicalmonitorenumerationapi.h>
 #include <cmath>
 
-#pragma comment(lib, "gdi32.lib")
-
 // Global variables for gamma control
 static HDC g_originalDC = nullptr;
 static WORD g_originalGammaRamp[256 * 3] = {0}; // Store original gamma for restoration
@@ -21,7 +19,7 @@ struct MonitorInfo
 };
 
 // Callback function for monitor enumeration
-BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData)
+BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT, LPARAM dwData)
 {
   // Get monitor info
   MONITORINFOEX monitorInfoEx;
@@ -151,7 +149,7 @@ struct BrightnessData
 };
 
 // Callback function for monitor enumeration
-BOOL CALLBACK MonitorEnumCallback(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData)
+BOOL CALLBACK MonitorEnumCallback(HMONITOR hMonitor, HDC, LPRECT, LPARAM dwData)
 {
   DWORD monitorCount = 0;
   PHYSICAL_MONITOR *physicalMonitors = nullptr;

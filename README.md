@@ -1,64 +1,50 @@
 # Candela Brightness Control
 
-WORK IN PROGRESS
-
-Candela is a lightweight Windows system tray application that allows you to control your monitor's brightness with a simple slider interface. It supports both hardware (DDC/CI) and software (gamma) brightness adjustment methods.
-
-## Features
-
-- System tray icon for easy access
-- Brightness slider (1-100%) accessible via left-click
-- Toggle between hardware and software brightness control
-- Real-time brightness adjustment
-- Settings dialog for application preferences
-- Automatic startup option
-- Support for multiple monitors
+Candela is a lightweight system tray application for Windows that allows you to control your monitor's brightness using both hardware (DDC/CI) and software (gamma) controls.
+Currently it is more 'function over form', it may be updated to look nicer in the future.
 
 ## Installation
 
+To install Candela, download the latest `Candela-Setup.exe` from the releases page and run the installer.
+
+## Building from Source
+
+If you prefer to build the application from source, you will need the following prerequisites.
+
 ### Prerequisites
 
-- Windows 7 or later
-- Monitor that supports DDC/CI for hardware brightness control (optional)
+- **A C++ Compiler**: MinGW/g++ is recommended. You can download MinGW-w64 from [mingw-w64.org](https://mingw-w64.org/).
+- **GNU Make**: A build automation tool. Often included with MinGW or can be downloaded from [gnu.org/software/make](https://www.gnu.org/software/make/).
+- **Windows SDK**: Provides necessary headers and libraries for Windows development. You can install it via Visual Studio Installer or as a standalone component from [developer.microsoft.com/windows/downloads/windows-sdk/](https://developer.microsoft.com/windows/downloads/windows-sdk/).
+- **NSIS**: A professional open source system to create Windows installers (only if you want to build the installer yourself). Download from [nsis.sourceforge.io/Download](https://nsis.sourceforge.io/Download).
 
-### Building from Source
+Make sure all of these tools are available in your system's PATH.
 
-1. Install CMake and a C++ compiler (Visual Studio, MinGW, etc.)
-2. Clone the repository
-3. Create a build directory: `mkdir build && cd build`
-4. Generate project files: `cmake ..`
-5. Build: `cmake --build . --config Release`
-6. The executable will be in the `bin` folder
+### Building the Application
 
-### Using the Installer
+1.  Clone the repository:
 
-1. Download the installer from the releases page
-2. Run the installer as administrator
-3. Follow the installation wizard
+    ```sh
+    git clone https://github.com/your-username/candela.git
+    cd candela
+    ```
 
-## Usage
+2.  Build the application:
+    ```sh
+    make
+    ```
 
-- Left-click on the system tray icon to open the brightness slider
-- Drag the slider to adjust brightness
-- Toggle the "Hardware Brightness" checkbox to switch between hardware and software brightness control
-- Right-click on the system tray icon for the context menu
-- Select "Settings" to configure startup behavior and default brightness mode
-- Select "Exit" to close the application
+After the build is complete, you will find `candela.exe` in the `build` directory.
 
-## Settings
+### Building the Installer
 
-- **Start on Windows**: Enable or disable automatic startup
-- **Default Mode**: Choose between hardware or software brightness as the default
-- **Current Brightness**: Shows the current brightness level (1-100%)
+To create the installer, you need to have `makensis.exe` (from the NSIS installation) in your PATH.
 
-## Technical Details
+1.  Make sure you have successfully built the application and `candela.exe` is present in the `build` directory.
 
-- Built with native Win32 API
-- Hardware brightness control uses Windows Monitor Configuration API
-- Software brightness control adjusts gamma ramps
-- Settings are stored in the Windows registry
-- Single executable with no external dependencies
+2.  Run the `makensis` command from the root of the project directory:
+    ```sh
+    makensis installer.nsi
+    ```
 
-## License
-
-MIT License - see the LICENSE file for details.
+This will create `Candela-Setup.exe` in the root of the project directory. Run this to install candela.
