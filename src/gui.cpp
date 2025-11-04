@@ -25,6 +25,12 @@ HWND g_hwnd_max_label = nullptr;
 HWND g_hwnd_software_label = nullptr;
 HWND g_hwnd_hardware_label = nullptr;
 
+// Global variables for settings window
+HWND g_settings_hwnd = nullptr;
+HWND g_hwnd_startup_checkbox = nullptr;
+HWND g_hwnd_software_checkbox = nullptr;
+HWND g_hwnd_hardware_checkbox = nullptr;
+
 // Global variable to track if the window class is registered
 static bool g_class_registered = false;
 
@@ -80,10 +86,14 @@ void ShowBrightnessSlider(HWND parent)
     POINT pt;
     GetCursorPos(&pt);
 
-    // Position window so the bottom aligns with the tray icon
-    // Adjust position to place it above the cursor, near the system tray
-    int x = pt.x - 65;  // 130/2
-    int y = pt.y - 260; // Position it above the cursor, with more space for controls
+    // Adjust window size and position based on which sliders are shown
+    int window_width = 0;
+    if (g_settings.getShowSoftwareBrightness()) window_width += 65;
+    if (g_settings.getShowHardwareBrightness()) window_width += 65;
+    if (window_width == 0) window_width = 65; // Show at least one slider
+
+    int x = pt.x - window_width / 2;
+    int y = pt.y - 260;
 
     // Create the brightness slider window
     g_hwnd_brightness = CreateWindowEx(
@@ -92,7 +102,7 @@ void ShowBrightnessSlider(HWND parent)
         L"Brightness",
         WS_POPUP,
         x, y,     // Position
-        130, 230, // Window size
+        window_width, 230, // Window size
         parent,
         nullptr,
         g_hInstance,
@@ -104,63 +114,78 @@ void ShowBrightnessSlider(HWND parent)
         return;
     }
 
-    // Create software brightness slider (left side)
-    g_hwnd_software_slider = CreateWindowEx(
-        0, TRACKBAR_CLASS, L"",
-        WS_CHILD | WS_VISIBLE | TBS_VERT | TBS_AUTOTICKS | TBS_BOTH,
-        0, 0, 65, 190,
-        g_hwnd_brightness, (HMENU)101, g_hInstance, nullptr);
+    int current_x = 0;
+    if (g_settings.getShowSoftwareBrightness())
+    {
+        // Create software brightness slider
+        g_hwnd_software_slider = CreateWindowEx(
+            0, TRACKBAR_CLASS, L"",
+            WS_CHILD | WS_VISIBLE | TBS_VERT | TBS_AUTOTICKS | TBS_BOTH,
+            current_x, 0, 65, 190,
+            g_hwnd_brightness, (HMENU)101, g_hInstance, nullptr);
 
-    // Create hardware brightness slider (right side)
-    g_hwnd_hardware_slider = CreateWindowEx(
-        0, TRACKBAR_CLASS, L"",
-        WS_CHILD | WS_VISIBLE | TBS_VERT | TBS_AUTOTICKS | TBS_BOTH,
-        65, 0, 65, 190,
-        g_hwnd_brightness, (HMENU)102, g_hInstance, nullptr);
+        g_hwnd_software_label = CreateWindowEx(
+            0, WC_STATIC, L"Software",
+            WS_CHILD | WS_VISIBLE | SS_CENTER,
+            current_x, 190, 65, 20,
+            g_hwnd_brightness, (HMENU)107, g_hInstance, nullptr);
 
-    // Create labels for slider titles
-    g_hwnd_software_label = CreateWindowEx(
-        0, WC_STATIC, L"Software",
-        WS_CHILD | WS_VISIBLE | SS_CENTER,
-        0, 190, 65, 20, // Match slider width
-        g_hwnd_brightness, (HMENU)107, g_hInstance, nullptr);
+        g_hwnd_software_value = CreateWindowEx(
+            0, WC_STATIC, L"",
+            WS_CHILD | WS_VISIBLE | SS_CENTER,
+            current_x, 210, 65, 20,
+            g_hwnd_brightness, (HMENU)109, g_hInstance, nullptr);
 
-    g_hwnd_hardware_label = CreateWindowEx(
-        0, WC_STATIC, L"Hardware",
-        WS_CHILD | WS_VISIBLE | SS_CENTER,
-        65, 190, 65, 20, // Match slider width
-        g_hwnd_brightness, (HMENU)108, g_hInstance, nullptr);
+        int currentBrightness = g_settings.getBrightness();
+        SendMessage(g_hwnd_software_slider, TBM_SETPOS, TRUE, currentBrightness);
+        wchar_t buffer[20];
+        swprintf_s(buffer, L"%d%%", currentBrightness);
+        SetWindowText(g_hwnd_software_value, buffer);
 
-    // Create current value displays for both sliders
-    g_hwnd_software_value = CreateWindowEx(
-        0, WC_STATIC, L"",
-        WS_CHILD | WS_VISIBLE | SS_CENTER,
-        0, 210, 65, 20, // Match slider width
-        g_hwnd_brightness, (HMENU)109, g_hInstance, nullptr);
+        current_x += 65;
+    }
 
-    g_hwnd_hardware_value = CreateWindowEx(
-        0, WC_STATIC, L"",
-        WS_CHILD | WS_VISIBLE | SS_CENTER,
-        65, 210, 65, 20, // Match slider width
-        g_hwnd_brightness, (HMENU)110, g_hInstance, nullptr);
+    if (g_settings.getShowHardwareBrightness())
+    {
+        // Create hardware brightness slider
+        g_hwnd_hardware_slider = CreateWindowEx(
+            0, TRACKBAR_CLASS, L"",
+            WS_CHILD | WS_VISIBLE | TBS_VERT | TBS_AUTOTICKS | TBS_BOTH,
+            current_x, 0, 65, 190,
+            g_hwnd_brightness, (HMENU)102, g_hInstance, nullptr);
 
-    // Initialize slider values with current settings
-    int currentBrightness = g_settings.getBrightness();
-    SendMessage(g_hwnd_software_slider, TBM_SETPOS, TRUE, currentBrightness);
-    SendMessage(g_hwnd_hardware_slider, TBM_SETPOS, TRUE, currentBrightness);
+        g_hwnd_hardware_label = CreateWindowEx(
+            0, WC_STATIC, L"Hardware",
+            WS_CHILD | WS_VISIBLE | SS_CENTER,
+            current_x, 190, 65, 20,
+            g_hwnd_brightness, (HMENU)108, g_hInstance, nullptr);
 
-    // Update current value displays
-    wchar_t buffer[20];
-    swprintf_s(buffer, L"%d%%", currentBrightness);
-    SetWindowText(g_hwnd_software_value, buffer);
-    SetWindowText(g_hwnd_hardware_value, buffer);
+        g_hwnd_hardware_value = CreateWindowEx(
+            0, WC_STATIC, L"",
+            WS_CHILD | WS_VISIBLE | SS_CENTER,
+            current_x, 210, 65, 20,
+            g_hwnd_brightness, (HMENU)110, g_hInstance, nullptr);
+
+        int currentBrightness = g_settings.getBrightness();
+        SendMessage(g_hwnd_hardware_slider, TBM_SETPOS, TRUE, currentBrightness);
+        wchar_t buffer[20];
+        swprintf_s(buffer, L"%d%%", currentBrightness);
+        SetWindowText(g_hwnd_hardware_value, buffer);
+    }
 
     // Set slider range (1-100)
-    if (g_hwnd_slider)
+    if (g_hwnd_software_slider)
     {
-        SendMessage(g_hwnd_slider, TBM_SETRANGE, TRUE, MAKELONG(1, 100));
-        SendMessage(g_hwnd_slider, TBM_SETPOS, TRUE, g_settings.getBrightness());
-        SendMessage(g_hwnd_slider, TBM_SETTICFREQ, 10, 0);
+        SendMessage(g_hwnd_software_slider, TBM_SETRANGE, TRUE, MAKELONG(1, 100));
+        SendMessage(g_hwnd_software_slider, TBM_SETPOS, TRUE, g_settings.getBrightness());
+        SendMessage(g_hwnd_software_slider, TBM_SETTICFREQ, 10, 0);
+    }
+
+    if (g_hwnd_hardware_slider)
+    {
+        SendMessage(g_hwnd_hardware_slider, TBM_SETRANGE, TRUE, MAKELONG(1, 100));
+        SendMessage(g_hwnd_hardware_slider, TBM_SETPOS, TRUE, g_settings.getBrightness());
+        SendMessage(g_hwnd_hardware_slider, TBM_SETTICFREQ, 10, 0);
     }
 
     // Show the window
@@ -261,83 +286,238 @@ LRESULT CALLBACK BrightnessSliderProc(HWND hwnd, UINT message, WPARAM wParam, LP
     return 0;
 }
 
-void ShowSettingsDialog(HWND parent, Settings &settings)
-{
-    // Create a modeless dialog for settings
-    HWND hDlg = CreateDialog(
-        g_hInstance,
-        MAKEINTRESOURCE(100), // This would be defined in a resource file
-        parent,
-        SettingsProc);
 
-    if (hDlg)
+
+// Global variable to track if the settings window class is registered
+
+static bool g_settings_class_registered = false;
+
+
+
+void ShowSettingsDialog(HWND parent)
+
+{
+
+    if (g_settings_hwnd && IsWindow(g_settings_hwnd))
+
     {
-        ShowWindow(hDlg, SW_SHOW);
+
+        ShowWindow(g_settings_hwnd, SW_SHOW);
+
+        SetForegroundWindow(g_settings_hwnd);
+
+        return;
+
     }
+
+
+
+    if (!g_settings_class_registered)
+
+    {
+
+        WNDCLASSEX wc = {};
+
+        wc.cbSize = sizeof(WNDCLASSEX);
+
+        wc.style = CS_HREDRAW | CS_VREDRAW;
+
+        wc.lpfnWndProc = SettingsProc;
+
+        wc.hInstance = g_hInstance;
+
+        wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+
+        wc.lpszClassName = L"CandelaSettings";
+
+        wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
+
+
+
+        if (!RegisterClassEx(&wc))
+
+        {
+
+            MessageBox(nullptr, L"Failed to register settings window class", L"Error", MB_OK | MB_ICONERROR);
+
+            return;
+
+        }
+
+        g_settings_class_registered = true;
+
+    }
+
+
+
+    g_settings_hwnd = CreateWindowEx(
+
+        0,
+
+        L"CandelaSettings",
+
+        L"Settings",
+
+        WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU,
+
+        CW_USEDEFAULT, CW_USEDEFAULT,
+
+        250, 200,
+
+        parent,
+
+        nullptr,
+
+        g_hInstance,
+
+        nullptr);
+
+
+
+    if (!g_settings_hwnd)
+
+    {
+
+        MessageBox(nullptr, L"Failed to create settings window", L"Error", MB_OK | MB_ICONERROR);
+
+        return;
+
+    }
+
+
+
+    g_hwnd_startup_checkbox = CreateWindowEx(
+
+        0, L"BUTTON", L"Start on boot",
+
+        BS_AUTOCHECKBOX | WS_CHILD | WS_VISIBLE,
+
+        10, 10, 200, 30,
+
+        g_settings_hwnd, (HMENU)201, g_hInstance, nullptr);
+
+
+
+    g_hwnd_software_checkbox = CreateWindowEx(
+
+        0, L"BUTTON", L"Show software brightness",
+
+        BS_AUTOCHECKBOX | WS_CHILD | WS_VISIBLE,
+
+        10, 50, 200, 30,
+
+        g_settings_hwnd, (HMENU)202, g_hInstance, nullptr);
+
+
+
+    g_hwnd_hardware_checkbox = CreateWindowEx(
+
+        0, L"BUTTON", L"Show hardware brightness",
+
+        BS_AUTOCHECKBOX | WS_CHILD | WS_VISIBLE,
+
+        10, 90, 200, 30,
+
+        g_settings_hwnd, (HMENU)203, g_hInstance, nullptr);
+
+
+
+    SendMessage(g_hwnd_startup_checkbox, BM_SETCHECK, g_settings.getStartOnBoot() ? BST_CHECKED : BST_UNCHECKED, 0);
+
+    SendMessage(g_hwnd_software_checkbox, BM_SETCHECK, g_settings.getShowSoftwareBrightness() ? BST_CHECKED : BST_UNCHECKED, 0);
+
+    SendMessage(g_hwnd_hardware_checkbox, BM_SETCHECK, g_settings.getShowHardwareBrightness() ? BST_CHECKED : BST_UNCHECKED, 0);
+
+
+
+    ShowWindow(g_settings_hwnd, SW_SHOW);
+
+    UpdateWindow(g_settings_hwnd);
+
 }
 
+
+
 LRESULT CALLBACK SettingsProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
+
 {
+
     switch (message)
+
     {
-    case WM_INITDIALOG:
-    {
-        // Initialize dialog controls with current settings
-        HWND startupCheckbox = GetDlgItem(hwnd, 201);  // ID for startup checkbox
-        HWND defaultModeCombo = GetDlgItem(hwnd, 202); // ID for mode combo box
 
-        if (startupCheckbox)
-        {
-            SendMessage(startupCheckbox, BM_SETCHECK,
-                        g_settings.getStartOnBoot() ? BST_CHECKED : BST_UNCHECKED, 0);
-        }
-
-        if (defaultModeCombo)
-        {
-            SendMessage(defaultModeCombo, CB_ADDSTRING, 0, (LPARAM)L"Hardware");
-            SendMessage(defaultModeCombo, CB_ADDSTRING, 0, (LPARAM)L"Software");
-            SendMessage(defaultModeCombo, CB_SETCURSEL,
-                        g_settings.getDefaultMode() ? 0 : 1, 0); // 0 for hardware, 1 for software
-        }
-
-        return TRUE;
-    }
     case WM_COMMAND:
-    {
-        int controlId = LOWORD(wParam);
-        int eventCode = HIWORD(wParam);
 
-        switch (controlId)
-        {
-        case 201: // Startup checkbox
-            if (eventCode == BN_CLICKED)
-            {
-                g_settings.setStartOnBoot(
-                    (SendMessage((HWND)lParam, BM_GETCHECK, 0, 0) == BST_CHECKED));
-            }
-            break;
-        case 202: // Default mode combo box
-            if (eventCode == CBN_SELCHANGE)
-            {
-                int selection = (int)SendMessage((HWND)lParam, CB_GETCURSEL, 0, 0);
-                g_settings.setDefaultMode(selection == 0); // 0 for hardware, 1 for software
-            }
-            break;
-        case IDOK: // OK button
-            g_settings.save();
-            EndDialog(hwnd, IDOK);
-            break;
-        case IDCANCEL: // Cancel button
-            EndDialog(hwnd, IDCANCEL);
-            break;
-        }
-        break;
-    }
-    case WM_CLOSE:
     {
-        EndDialog(hwnd, 0);
+
+        int controlId = LOWORD(wParam);
+
+        if (HIWORD(wParam) == BN_CLICKED)
+
+        {
+
+            switch (controlId)
+
+            {
+
+            case 201: // Start on boot
+
+                g_settings.setStartOnBoot(SendMessage(g_hwnd_startup_checkbox, BM_GETCHECK, 0, 0) == BST_CHECKED);
+
+                g_settings.save();
+
+                break;
+
+            case 202: // Show software brightness
+
+                g_settings.setShowSoftwareBrightness(SendMessage(g_hwnd_software_checkbox, BM_GETCHECK, 0, 0) == BST_CHECKED);
+
+                g_settings.save();
+
+                break;
+
+            case 203: // Show hardware brightness
+
+                g_settings.setShowHardwareBrightness(SendMessage(g_hwnd_hardware_checkbox, BM_GETCHECK, 0, 0) == BST_CHECKED);
+
+                g_settings.save();
+
+                break;
+
+            }
+
+        }
+
         break;
+
     }
+
+    case WM_CLOSE:
+
+    {
+
+        ShowWindow(hwnd, SW_HIDE);
+
+        break;
+
     }
+
+    case WM_DESTROY:
+
+    {
+
+        g_settings_hwnd = nullptr;
+
+        break;
+
+    }
+
+    default:
+
+        return DefWindowProc(hwnd, message, wParam, lParam);
+
+    }
+
     return 0;
+
 }

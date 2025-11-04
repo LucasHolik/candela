@@ -65,8 +65,7 @@ void Tray::handleRightClick(HWND hwnd, int x, int y) {
         }
         else if (cmd == ID_SETTINGS) {
             // Show settings dialog
-            extern Settings g_settings;
-            ShowSettingsDialog(hwnd, g_settings);
+            ShowSettingsDialog(hwnd);
         }
         else if (cmd == ID_EXIT) {
             // Exit the application

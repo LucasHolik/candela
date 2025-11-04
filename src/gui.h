@@ -23,7 +23,7 @@ extern HWND g_hwnd_hardware_label;
 void ShowBrightnessSlider(HWND parent);
 
 // Function to show the settings dialog
-void ShowSettingsDialog(HWND parent, Settings& settings);
+void ShowSettingsDialog(HWND parent);
 
 // Window procedure for the brightness slider dialog
 LRESULT CALLBACK BrightnessSliderProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);

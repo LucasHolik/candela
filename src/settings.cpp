@@ -7,12 +7,16 @@ const wchar_t* const Settings::BRIGHTNESS_VALUE = L"Brightness";
 const wchar_t* const Settings::MODE_VALUE = L"HardwareMode";
 const wchar_t* const Settings::START_ON_BOOT_VALUE = L"StartOnBoot";
 const wchar_t* const Settings::DEFAULT_MODE_VALUE = L"DefaultMode";
+const wchar_t* const Settings::SHOW_SOFTWARE_BRIGHTNESS_VALUE = L"ShowSoftwareBrightness";
+const wchar_t* const Settings::SHOW_HARDWARE_BRIGHTNESS_VALUE = L"ShowHardwareBrightness";
 
 Settings::Settings() 
     : m_brightness(50)
     , m_hardwareMode(false)  // Default to software mode
     , m_startOnBoot(false)
     , m_defaultMode(false)   // Default to software as primary mode
+    , m_showSoftwareBrightness(true)
+    , m_showHardwareBrightness(true)
 {
 }
 
@@ -56,6 +60,22 @@ bool Settings::load() {
                                 reinterpret_cast<LPBYTE>(&value), &size);
         if (result == ERROR_SUCCESS) {
             m_defaultMode = (value != 0);
+        }
+
+        // Load show software brightness
+        size = sizeof(DWORD);
+        result = RegQueryValueEx(hKey, SHOW_SOFTWARE_BRIGHTNESS_VALUE, nullptr, nullptr, 
+                                reinterpret_cast<LPBYTE>(&value), &size);
+        if (result == ERROR_SUCCESS) {
+            m_showSoftwareBrightness = (value != 0);
+        }
+
+        // Load show hardware brightness
+        size = sizeof(DWORD);
+        result = RegQueryValueEx(hKey, SHOW_HARDWARE_BRIGHTNESS_VALUE, nullptr, nullptr, 
+                                reinterpret_cast<LPBYTE>(&value), &size);
+        if (result == ERROR_SUCCESS) {
+            m_showHardwareBrightness = (value != 0);
         }
         
         RegCloseKey(hKey);
@@ -115,6 +135,16 @@ bool Settings::save() const {
     // Save default mode
     value = m_defaultMode ? 1 : 0;
     RegSetValueEx(hKey, DEFAULT_MODE_VALUE, 0, REG_DWORD, 
+                  reinterpret_cast<const BYTE*>(&value), sizeof(value));
+
+    // Save show software brightness
+    value = m_showSoftwareBrightness ? 1 : 0;
+    RegSetValueEx(hKey, SHOW_SOFTWARE_BRIGHTNESS_VALUE, 0, REG_DWORD, 
+                  reinterpret_cast<const BYTE*>(&value), sizeof(value));
+
+    // Save show hardware brightness
+    value = m_showHardwareBrightness ? 1 : 0;
+    RegSetValueEx(hKey, SHOW_HARDWARE_BRIGHTNESS_VALUE, 0, REG_DWORD, 
                   reinterpret_cast<const BYTE*>(&value), sizeof(value));
     
     RegCloseKey(hKey);
