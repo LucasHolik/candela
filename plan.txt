@@ -3,7 +3,7 @@ This document outlines the development plan for the Candela project. The primary
 **Rules of Engagement:**
 1.  We will follow the steps outlined in this plan.
 2.  Changes will be small, atomic, and verifiable.
-3.  **Only the user will execute `cargo` commands** (`check`, `build`, `run`). After I make a change, I will prompt you to run the necessary command.
+3.  **Only the user will execute 'cmake' commnads.
 
 ### **Complete Project Plan: Candela (C++ System Tray Brightness Control)**
 
