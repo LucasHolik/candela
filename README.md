@@ -2,6 +2,7 @@
 
 Candela is a lightweight system tray application for Windows that allows you to control your monitor's brightness using both hardware (DDC/CI) and software (gamma) controls.
 Currently it is more 'function over form', it may be updated to look nicer in the future.
+It has not been tested with multiple monitors so functionality maybe limited.
 
 ## Installation
 
