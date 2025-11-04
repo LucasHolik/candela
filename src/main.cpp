@@ -5,6 +5,7 @@
 
 #include "tray.h"
 #include "settings.h"
+#include "resource.h"
 
 // Global application instance
 HINSTANCE g_hInstance = nullptr;
@@ -34,11 +35,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
   wc.style = CS_HREDRAW | CS_VREDRAW;
   wc.lpfnWndProc = WndProc;
   wc.hInstance = hInstance;
-  wc.hIcon = LoadIcon(hInstance, IDI_APPLICATION);
+  wc.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_ICON1));
   wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
   wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
   wc.lpszClassName = CLASS_NAME;
-  wc.hIconSm = LoadIcon(hInstance, IDI_APPLICATION);
+  wc.hIconSm = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_ICON1));
 
   RegisterClassExW(&wc);
 

@@ -1,0 +1,4 @@
+#include "resource.h"
+
+// Icon
+IDI_ICON1               ICON                    "candela.ico"

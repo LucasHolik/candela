@@ -1,6 +1,7 @@
 #include "tray.h"
 #include "gui.h"
 #include "settings.h"
+#include "resource.h"
 #include <shellapi.h>
 #include <windowsx.h>
 
@@ -17,8 +18,9 @@ bool Tray::createTray(HWND hwnd)
   nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
   nid.uCallbackMessage = WM_TRAYICON;
 
-  // Load icon - for now using default, but we'll add a custom one later
-  nid.hIcon = LoadIcon(nullptr, IDI_INFORMATION);
+  // Load our custom icon
+  HINSTANCE hInstance = GetModuleHandle(NULL);
+  nid.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_ICON1));
 
   wcscpy_s(nid.szTip, L"Candela Brightness Control");
 

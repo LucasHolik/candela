@@ -18,8 +18,16 @@ set(SOURCES
     src/settings.cpp
 )
 
+# Resource file for Windows
+set(RESOURCES
+    candela.rc
+)
+
 # Create executable
-add_executable(${PROJECT_NAME} WIN32 ${SOURCES})
+add_executable(${PROJECT_NAME} WIN32 ${SOURCES} ${RESOURCES})
+
+# Include the directory containing resource.h
+target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 # Link Windows libraries
 target_link_libraries(${PROJECT_NAME} 
