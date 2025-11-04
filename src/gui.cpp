@@ -31,35 +31,36 @@ HWND g_hwnd_startup_checkbox = nullptr;
 HWND g_hwnd_software_checkbox = nullptr;
 HWND g_hwnd_hardware_checkbox = nullptr;
 
+// Global variables to track the state of the sliders when the window was last created
+bool g_last_show_software = true;
+bool g_last_show_hardware = true;
+
 // Global variable to track if the window class is registered
 static bool g_class_registered = false;
 
+void ShowSoftwareSlider(HWND parent, POINT pt);
+void ShowHardwareSlider(HWND parent, POINT pt);
+void ShowBothSliders(HWND parent, POINT pt);
+
 void ShowBrightnessSlider(HWND parent)
 {
-    // If window already exists, show it again
+    bool show_software = g_settings.getShowSoftwareBrightness();
+    bool show_hardware = g_settings.getShowHardwareBrightness();
+
+    // If window already exists, check if the settings have changed
     if (g_hwnd_brightness && IsWindow(g_hwnd_brightness))
     {
-        // If it's hidden, show it again
-        ShowWindow(g_hwnd_brightness, SW_SHOW);
-        SetForegroundWindow(g_hwnd_brightness);
-        // Update the slider position to current setting
-        int currentBrightness = g_settings.getBrightness();
-        SendMessage(g_hwnd_slider, TBM_SETPOS, TRUE, currentBrightness);
-
-        // Update the toggle to current mode
-        if (g_hwnd_toggle)
+        if (show_software != g_last_show_software || show_hardware != g_last_show_hardware)
         {
-            SendMessage(g_hwnd_toggle, BM_SETCHECK, g_settings.isHardwareMode() ? BST_CHECKED : BST_UNCHECKED, 0);
+            DestroyWindow(g_hwnd_brightness);
+            g_hwnd_brightness = nullptr;
         }
-
-        // Update brightness label
-        if (g_hwnd_current_brightness)
+        else
         {
-            wchar_t buffer[50];
-            swprintf_s(buffer, L"Brightness: %d%%", currentBrightness);
-            SetWindowText(g_hwnd_current_brightness, buffer);
+            ShowWindow(g_hwnd_brightness, SW_SHOW);
+            SetForegroundWindow(g_hwnd_brightness);
+            return;
         }
-        return;
     }
 
     // Register the window class for the brightness slider if not already registered
@@ -82,113 +83,199 @@ void ShowBrightnessSlider(HWND parent)
         g_class_registered = true;
     }
 
-    // Get cursor position for window placement
     POINT pt;
     GetCursorPos(&pt);
 
-    // Adjust window size and position based on which sliders are shown
-    int window_width = 0;
-    if (g_settings.getShowSoftwareBrightness()) window_width += 65;
-    if (g_settings.getShowHardwareBrightness()) window_width += 65;
-    if (window_width == 0) window_width = 65; // Show at least one slider
+    if (show_software && show_hardware)
+    {
+        ShowBothSliders(parent, pt);
+    }
+    else if (show_software)
+    {
+        ShowSoftwareSlider(parent, pt);
+    }
+    else if (show_hardware)
+    {
+        ShowHardwareSlider(parent, pt);
+    }
+}
 
+void ShowSoftwareSlider(HWND parent, POINT pt)
+{
+    g_last_show_software = true;
+    g_last_show_hardware = false;
+
+    // TODO: Manually adjust this function to show only the software slider
+    int window_width = 65;
     int x = pt.x - window_width / 2;
     int y = pt.y - 260;
 
-    // Create the brightness slider window
     g_hwnd_brightness = CreateWindowEx(
         WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
         L"CandelaBrightnessSlider",
         L"Brightness",
         WS_POPUP,
-        x, y,     // Position
-        window_width, 230, // Window size
-        parent,
-        nullptr,
-        g_hInstance,
-        nullptr);
+        x, y, window_width, 230,
+        parent, nullptr, g_hInstance, nullptr);
 
-    if (!g_hwnd_brightness)
-    {
-        MessageBox(nullptr, L"Failed to create brightness slider window", L"Error", MB_OK | MB_ICONERROR);
-        return;
-    }
+    g_hwnd_software_slider = CreateWindowEx(
+        0, TRACKBAR_CLASS, L"",
+        WS_CHILD | WS_VISIBLE | TBS_VERT | TBS_AUTOTICKS | TBS_BOTH,
+        0, 0, 65, 190,
+        g_hwnd_brightness, (HMENU)101, g_hInstance, nullptr);
 
-    int current_x = 0;
-    if (g_settings.getShowSoftwareBrightness())
-    {
-        // Create software brightness slider
-        g_hwnd_software_slider = CreateWindowEx(
-            0, TRACKBAR_CLASS, L"",
-            WS_CHILD | WS_VISIBLE | TBS_VERT | TBS_AUTOTICKS | TBS_BOTH,
-            current_x, 0, 65, 190,
-            g_hwnd_brightness, (HMENU)101, g_hInstance, nullptr);
+    g_hwnd_software_label = CreateWindowEx(
+        0, WC_STATIC, L"Software",
+        WS_CHILD | WS_VISIBLE | SS_CENTER,
+        0, 190, 65, 20,
+        g_hwnd_brightness, (HMENU)107, g_hInstance, nullptr);
 
-        g_hwnd_software_label = CreateWindowEx(
-            0, WC_STATIC, L"Software",
-            WS_CHILD | WS_VISIBLE | SS_CENTER,
-            current_x, 190, 65, 20,
-            g_hwnd_brightness, (HMENU)107, g_hInstance, nullptr);
+    g_hwnd_software_value = CreateWindowEx(
+        0, WC_STATIC, L"",
+        WS_CHILD | WS_VISIBLE | SS_CENTER,
+        0, 210, 65, 20,
+        g_hwnd_brightness, (HMENU)109, g_hInstance, nullptr);
 
-        g_hwnd_software_value = CreateWindowEx(
-            0, WC_STATIC, L"",
-            WS_CHILD | WS_VISIBLE | SS_CENTER,
-            current_x, 210, 65, 20,
-            g_hwnd_brightness, (HMENU)109, g_hInstance, nullptr);
+    int currentBrightness = g_settings.getBrightness();
+    SendMessage(g_hwnd_software_slider, TBM_SETPOS, TRUE, currentBrightness);
+    wchar_t buffer[20];
+    swprintf_s(buffer, L"%d%%", currentBrightness);
+    SetWindowText(g_hwnd_software_value, buffer);
 
-        int currentBrightness = g_settings.getBrightness();
-        SendMessage(g_hwnd_software_slider, TBM_SETPOS, TRUE, currentBrightness);
-        wchar_t buffer[20];
-        swprintf_s(buffer, L"%d%%", currentBrightness);
-        SetWindowText(g_hwnd_software_value, buffer);
+    SendMessage(g_hwnd_software_slider, TBM_SETRANGE, TRUE, MAKELONG(1, 100));
+    SendMessage(g_hwnd_software_slider, TBM_SETPOS, TRUE, g_settings.getBrightness());
+    SendMessage(g_hwnd_software_slider, TBM_SETTICFREQ, 10, 0);
 
-        current_x += 65;
-    }
+    ShowWindow(g_hwnd_brightness, SW_SHOW);
+    UpdateWindow(g_hwnd_brightness);
+    SetForegroundWindow(g_hwnd_brightness);
+}
 
-    if (g_settings.getShowHardwareBrightness())
-    {
-        // Create hardware brightness slider
-        g_hwnd_hardware_slider = CreateWindowEx(
-            0, TRACKBAR_CLASS, L"",
-            WS_CHILD | WS_VISIBLE | TBS_VERT | TBS_AUTOTICKS | TBS_BOTH,
-            current_x, 0, 65, 190,
-            g_hwnd_brightness, (HMENU)102, g_hInstance, nullptr);
+void ShowHardwareSlider(HWND parent, POINT pt)
+{
+    g_last_show_software = false;
+    g_last_show_hardware = true;
 
-        g_hwnd_hardware_label = CreateWindowEx(
-            0, WC_STATIC, L"Hardware",
-            WS_CHILD | WS_VISIBLE | SS_CENTER,
-            current_x, 190, 65, 20,
-            g_hwnd_brightness, (HMENU)108, g_hInstance, nullptr);
+    // TODO: Manually adjust this function to show only the hardware slider
+    int window_width = 65;
+    int x = pt.x - window_width / 2;
+    int y = pt.y - 260;
 
-        g_hwnd_hardware_value = CreateWindowEx(
-            0, WC_STATIC, L"",
-            WS_CHILD | WS_VISIBLE | SS_CENTER,
-            current_x, 210, 65, 20,
-            g_hwnd_brightness, (HMENU)110, g_hInstance, nullptr);
+    g_hwnd_brightness = CreateWindowEx(
+        WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
+        L"CandelaBrightnessSlider",
+        L"Brightness",
+        WS_POPUP,
+        x, y, window_width, 230,
+        parent, nullptr, g_hInstance, nullptr);
 
-        int currentBrightness = g_settings.getBrightness();
-        SendMessage(g_hwnd_hardware_slider, TBM_SETPOS, TRUE, currentBrightness);
-        wchar_t buffer[20];
-        swprintf_s(buffer, L"%d%%", currentBrightness);
-        SetWindowText(g_hwnd_hardware_value, buffer);
-    }
+    g_hwnd_hardware_slider = CreateWindowEx(
+        0, TRACKBAR_CLASS, L"",
+        WS_CHILD | WS_VISIBLE | TBS_VERT | TBS_AUTOTICKS | TBS_BOTH,
+        0, 0, 65, 190,
+        g_hwnd_brightness, (HMENU)102, g_hInstance, nullptr);
 
-    // Set slider range (1-100)
-    if (g_hwnd_software_slider)
-    {
-        SendMessage(g_hwnd_software_slider, TBM_SETRANGE, TRUE, MAKELONG(1, 100));
-        SendMessage(g_hwnd_software_slider, TBM_SETPOS, TRUE, g_settings.getBrightness());
-        SendMessage(g_hwnd_software_slider, TBM_SETTICFREQ, 10, 0);
-    }
+    g_hwnd_hardware_label = CreateWindowEx(
+        0, WC_STATIC, L"Hardware",
+        WS_CHILD | WS_VISIBLE | SS_CENTER,
+        0, 190, 65, 20,
+        g_hwnd_brightness, (HMENU)108, g_hInstance, nullptr);
 
-    if (g_hwnd_hardware_slider)
-    {
-        SendMessage(g_hwnd_hardware_slider, TBM_SETRANGE, TRUE, MAKELONG(1, 100));
-        SendMessage(g_hwnd_hardware_slider, TBM_SETPOS, TRUE, g_settings.getBrightness());
-        SendMessage(g_hwnd_hardware_slider, TBM_SETTICFREQ, 10, 0);
-    }
+    g_hwnd_hardware_value = CreateWindowEx(
+        0, WC_STATIC, L"",
+        WS_CHILD | WS_VISIBLE | SS_CENTER,
+        0, 210, 65, 20,
+        g_hwnd_brightness, (HMENU)110, g_hInstance, nullptr);
 
-    // Show the window
+    int currentBrightness = g_settings.getBrightness();
+    SendMessage(g_hwnd_hardware_slider, TBM_SETPOS, TRUE, currentBrightness);
+    wchar_t buffer[20];
+    swprintf_s(buffer, L"%d%%", currentBrightness);
+    SetWindowText(g_hwnd_hardware_value, buffer);
+
+    SendMessage(g_hwnd_hardware_slider, TBM_SETRANGE, TRUE, MAKELONG(1, 100));
+    SendMessage(g_hwnd_hardware_slider, TBM_SETPOS, TRUE, g_settings.getBrightness());
+    SendMessage(g_hwnd_hardware_slider, TBM_SETTICFREQ, 10, 0);
+
+    ShowWindow(g_hwnd_brightness, SW_SHOW);
+    UpdateWindow(g_hwnd_brightness);
+    SetForegroundWindow(g_hwnd_brightness);
+}
+
+void ShowBothSliders(HWND parent, POINT pt)
+{
+    g_last_show_software = true;
+    g_last_show_hardware = true;
+
+    // TODO: Manually adjust this function to show both sliders
+    int window_width = 130;
+    int x = pt.x - window_width / 2;
+    int y = pt.y - 260;
+
+    g_hwnd_brightness = CreateWindowEx(
+        WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
+        L"CandelaBrightnessSlider",
+        L"Brightness",
+        WS_POPUP,
+        x, y, window_width, 230,
+        parent, nullptr, g_hInstance, nullptr);
+
+    // Create software brightness slider
+    g_hwnd_software_slider = CreateWindowEx(
+        0, TRACKBAR_CLASS, L"",
+        WS_CHILD | WS_VISIBLE | TBS_VERT | TBS_AUTOTICKS | TBS_BOTH,
+        0, 0, 65, 190,
+        g_hwnd_brightness, (HMENU)101, g_hInstance, nullptr);
+
+    g_hwnd_software_label = CreateWindowEx(
+        0, WC_STATIC, L"Software",
+        WS_CHILD | WS_VISIBLE | SS_CENTER,
+        0, 190, 65, 20,
+        g_hwnd_brightness, (HMENU)107, g_hInstance, nullptr);
+
+    g_hwnd_software_value = CreateWindowEx(
+        0, WC_STATIC, L"",
+        WS_CHILD | WS_VISIBLE | SS_CENTER,
+        0, 210, 65, 20,
+        g_hwnd_brightness, (HMENU)109, g_hInstance, nullptr);
+
+    int currentBrightness = g_settings.getBrightness();
+    SendMessage(g_hwnd_software_slider, TBM_SETPOS, TRUE, currentBrightness);
+    wchar_t buffer[20];
+    swprintf_s(buffer, L"%d%%", currentBrightness);
+    SetWindowText(g_hwnd_software_value, buffer);
+
+    // Create hardware brightness slider
+    g_hwnd_hardware_slider = CreateWindowEx(
+        0, TRACKBAR_CLASS, L"",
+        WS_CHILD | WS_VISIBLE | TBS_VERT | TBS_AUTOTICKS | TBS_BOTH,
+        65, 0, 65, 190,
+        g_hwnd_brightness, (HMENU)102, g_hInstance, nullptr);
+
+    g_hwnd_hardware_label = CreateWindowEx(
+        0, WC_STATIC, L"Hardware",
+        WS_CHILD | WS_VISIBLE | SS_CENTER,
+        65, 190, 65, 20,
+        g_hwnd_brightness, (HMENU)108, g_hInstance, nullptr);
+
+    g_hwnd_hardware_value = CreateWindowEx(
+        0, WC_STATIC, L"",
+        WS_CHILD | WS_VISIBLE | SS_CENTER,
+        65, 210, 65, 20,
+        g_hwnd_brightness, (HMENU)110, g_hInstance, nullptr);
+
+    SendMessage(g_hwnd_hardware_slider, TBM_SETPOS, TRUE, currentBrightness);
+    swprintf_s(buffer, L"%d%%", currentBrightness);
+    SetWindowText(g_hwnd_hardware_value, buffer);
+
+    SendMessage(g_hwnd_software_slider, TBM_SETRANGE, TRUE, MAKELONG(1, 100));
+    SendMessage(g_hwnd_software_slider, TBM_SETPOS, TRUE, g_settings.getBrightness());
+    SendMessage(g_hwnd_software_slider, TBM_SETTICFREQ, 10, 0);
+
+    SendMessage(g_hwnd_hardware_slider, TBM_SETRANGE, TRUE, MAKELONG(1, 100));
+    SendMessage(g_hwnd_hardware_slider, TBM_SETPOS, TRUE, g_settings.getBrightness());
+    SendMessage(g_hwnd_hardware_slider, TBM_SETTICFREQ, 10, 0);
+
     ShowWindow(g_hwnd_brightness, SW_SHOW);
     UpdateWindow(g_hwnd_brightness);
     SetForegroundWindow(g_hwnd_brightness);
@@ -468,21 +555,65 @@ LRESULT CALLBACK SettingsProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 
                 break;
 
-            case 202: // Show software brightness
+                        case 202: // Show software brightness
 
-                g_settings.setShowSoftwareBrightness(SendMessage(g_hwnd_software_checkbox, BM_GETCHECK, 0, 0) == BST_CHECKED);
+                        {
 
-                g_settings.save();
+                            bool is_checked = SendMessage(g_hwnd_software_checkbox, BM_GETCHECK, 0, 0) == BST_CHECKED;
 
-                break;
+                            if (!is_checked && !g_settings.getShowHardwareBrightness())
 
-            case 203: // Show hardware brightness
+                            {
 
-                g_settings.setShowHardwareBrightness(SendMessage(g_hwnd_hardware_checkbox, BM_GETCHECK, 0, 0) == BST_CHECKED);
+                                MessageBox(hwnd, L"You must have at least one brightness slider enabled.", L"Error", MB_OK | MB_ICONERROR);
 
-                g_settings.save();
+                                SendMessage(g_hwnd_software_checkbox, BM_SETCHECK, BST_CHECKED, 0);
 
-                break;
+                            }
+
+                            else
+
+                            {
+
+                                g_settings.setShowSoftwareBrightness(is_checked);
+
+                                g_settings.save();
+
+                            }
+
+                            break;
+
+                        }
+
+                        case 203: // Show hardware brightness
+
+                        {
+
+                            bool is_checked = SendMessage(g_hwnd_hardware_checkbox, BM_GETCHECK, 0, 0) == BST_CHECKED;
+
+                            if (!is_checked && !g_settings.getShowSoftwareBrightness())
+
+                            {
+
+                                MessageBox(hwnd, L"You must have at least one brightness slider enabled.", L"Error", MB_OK | MB_ICONERROR);
+
+                                SendMessage(g_hwnd_hardware_checkbox, BM_SETCHECK, BST_CHECKED, 0);
+
+                            }
+
+                            else
+
+                            {
+
+                                g_settings.setShowHardwareBrightness(is_checked);
+
+                                g_settings.save();
+
+                            }
+
+                            break;
+
+                        }
 
             }
 
