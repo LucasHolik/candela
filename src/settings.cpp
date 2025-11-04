@@ -3,7 +3,8 @@
 #include <string>
 
 const wchar_t *const Settings::REGISTRY_KEY = L"Software\\Candela";
-const wchar_t *const Settings::BRIGHTNESS_VALUE = L"Brightness";
+const wchar_t *const Settings::SOFTWARE_BRIGHTNESS_VALUE = L"SoftwareBrightness";
+const wchar_t *const Settings::HARDWARE_BRIGHTNESS_VALUE = L"HardwareBrightness";
 const wchar_t *const Settings::MODE_VALUE = L"HardwareMode";
 const wchar_t *const Settings::START_ON_BOOT_VALUE = L"StartOnBoot";
 const wchar_t *const Settings::DEFAULT_MODE_VALUE = L"DefaultMode";
@@ -11,7 +12,7 @@ const wchar_t *const Settings::SHOW_SOFTWARE_BRIGHTNESS_VALUE = L"ShowSoftwareBr
 const wchar_t *const Settings::SHOW_HARDWARE_BRIGHTNESS_VALUE = L"ShowHardwareBrightness";
 
 Settings::Settings()
-    : m_brightness(50), m_hardwareMode(false) // Default to software mode
+    : m_softwareBrightness(50), m_hardwareBrightness(50), m_hardwareMode(false) // Default to software mode
       ,
       m_startOnBoot(false), m_defaultMode(false) // Default to software as primary mode
       ,
@@ -33,12 +34,21 @@ bool Settings::load()
     {
         DWORD value, size = sizeof(DWORD);
 
-        // Load brightness
-        result = RegQueryValueEx(hKey, BRIGHTNESS_VALUE, nullptr, nullptr,
+        // Load software brightness
+        result = RegQueryValueEx(hKey, SOFTWARE_BRIGHTNESS_VALUE, nullptr, nullptr,
                                  reinterpret_cast<LPBYTE>(&value), &size);
         if (result == ERROR_SUCCESS)
         {
-            m_brightness = static_cast<int>(value);
+            m_softwareBrightness = static_cast<int>(value);
+        }
+
+        // Load hardware brightness
+        size = sizeof(DWORD);
+        result = RegQueryValueEx(hKey, HARDWARE_BRIGHTNESS_VALUE, nullptr, nullptr,
+                                 reinterpret_cast<LPBYTE>(&value), &size);
+        if (result == ERROR_SUCCESS)
+        {
+            m_hardwareBrightness = static_cast<int>(value);
         }
 
         // Load hardware mode
@@ -131,9 +141,14 @@ bool Settings::save() const
 
     DWORD value;
 
-    // Save brightness
-    value = static_cast<DWORD>(m_brightness);
-    RegSetValueEx(hKey, BRIGHTNESS_VALUE, 0, REG_DWORD,
+    // Save software brightness
+    value = static_cast<DWORD>(m_softwareBrightness);
+    RegSetValueEx(hKey, SOFTWARE_BRIGHTNESS_VALUE, 0, REG_DWORD,
+                  reinterpret_cast<const BYTE *>(&value), sizeof(value));
+
+    // Save hardware brightness
+    value = static_cast<DWORD>(m_hardwareBrightness);
+    RegSetValueEx(hKey, HARDWARE_BRIGHTNESS_VALUE, 0, REG_DWORD,
                   reinterpret_cast<const BYTE *>(&value), sizeof(value));
 
     // Save hardware mode

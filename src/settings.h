@@ -15,7 +15,8 @@ public:
     bool save() const;
 
     // Getters
-    int getBrightness() const { return m_brightness; }
+    int getSoftwareBrightness() const { return m_softwareBrightness; }
+    int getHardwareBrightness() const { return m_hardwareBrightness; }
     bool isHardwareMode() const { return m_hardwareMode; }
     bool getStartOnBoot() const { return m_startOnBoot; }
     bool getDefaultMode() const { return m_defaultMode; } // true for hardware, false for software
@@ -23,7 +24,8 @@ public:
     bool getShowHardwareBrightness() const { return m_showHardwareBrightness; }
 
     // Setters
-    void setBrightness(int brightness) { m_brightness = brightness; }
+    void setSoftwareBrightness(int brightness) { m_softwareBrightness = brightness; }
+    void setHardwareBrightness(int brightness) { m_hardwareBrightness = brightness; }
     void setHardwareMode(bool hardwareMode) { m_hardwareMode = hardwareMode; }
     void setStartOnBoot(bool startOnBoot) { m_startOnBoot = startOnBoot; }
     void setDefaultMode(bool defaultMode) { m_defaultMode = defaultMode; }
@@ -31,7 +33,8 @@ public:
     void setShowHardwareBrightness(bool show) { m_showHardwareBrightness = show; }
 
 private:
-    int m_brightness;
+    int m_softwareBrightness;
+    int m_hardwareBrightness;
     bool m_hardwareMode;
     bool m_startOnBoot;
     bool m_defaultMode; // true for hardware by default, false for software
@@ -40,7 +43,8 @@ private:
 
     // Registry key for settings
     static const wchar_t *const REGISTRY_KEY;
-    static const wchar_t *const BRIGHTNESS_VALUE;
+    static const wchar_t *const SOFTWARE_BRIGHTNESS_VALUE;
+    static const wchar_t *const HARDWARE_BRIGHTNESS_VALUE;
     static const wchar_t *const MODE_VALUE;
     static const wchar_t *const START_ON_BOOT_VALUE;
     static const wchar_t *const DEFAULT_MODE_VALUE;

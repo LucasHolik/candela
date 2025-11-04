@@ -135,14 +135,14 @@ void ShowSoftwareSlider(HWND parent, POINT pt)
         0, 210, 65, 20,
         g_hwnd_brightness, (HMENU)109, g_hInstance, nullptr);
 
-    int currentBrightness = g_settings.getBrightness();
-    SendMessage(g_hwnd_software_slider, TBM_SETPOS, TRUE, 101 - currentBrightness);
+    int currentSoftwareBrightness = g_settings.getSoftwareBrightness();
+    SendMessage(g_hwnd_software_slider, TBM_SETPOS, TRUE, 101 - currentSoftwareBrightness);
     wchar_t buffer[20];
-    swprintf_s(buffer, L"%d%%", currentBrightness);
+    swprintf_s(buffer, L"%d%%", currentSoftwareBrightness);
     SetWindowText(g_hwnd_software_value, buffer);
 
     SendMessage(g_hwnd_software_slider, TBM_SETRANGE, TRUE, MAKELONG(1, 100));
-    SendMessage(g_hwnd_software_slider, TBM_SETPOS, TRUE, 101 - g_settings.getBrightness());
+    SendMessage(g_hwnd_software_slider, TBM_SETPOS, TRUE, 101 - currentSoftwareBrightness);
     SendMessage(g_hwnd_software_slider, TBM_SETTICFREQ, 10, 0);
     UpdateWindow(g_hwnd_brightness);
     SetForegroundWindow(g_hwnd_brightness);
@@ -183,12 +183,14 @@ void ShowHardwareSlider(HWND parent, POINT pt)
         0, 210, 65, 20,
         g_hwnd_brightness, (HMENU)110, g_hInstance, nullptr);
 
-    int currentBrightness = g_settings.getBrightness();
-    SendMessage(g_hwnd_hardware_slider, TBM_SETPOS, TRUE, 101 - currentBrightness);
+    int currentHardwareBrightness = g_settings.getHardwareBrightness();
+    SendMessage(g_hwnd_hardware_slider, TBM_SETPOS, TRUE, 101 - currentHardwareBrightness);
     wchar_t buffer[20];
-    swprintf_s(buffer, L"%d%%", currentBrightness);
+    swprintf_s(buffer, L"%d%%", currentHardwareBrightness);
+    SetWindowText(g_hwnd_hardware_value, buffer);
+
     SendMessage(g_hwnd_hardware_slider, TBM_SETRANGE, TRUE, MAKELONG(1, 100));
-    SendMessage(g_hwnd_hardware_slider, TBM_SETPOS, TRUE, 101 - g_settings.getBrightness());
+    SendMessage(g_hwnd_hardware_slider, TBM_SETPOS, TRUE, 101 - currentHardwareBrightness);
     SendMessage(g_hwnd_hardware_slider, TBM_SETTICFREQ, 10, 0);
 
     ShowWindow(g_hwnd_brightness, SW_SHOW);
@@ -232,11 +234,11 @@ void ShowBothSliders(HWND parent, POINT pt)
         0, 210, 65, 20,
         g_hwnd_brightness, (HMENU)109, g_hInstance, nullptr);
 
-    int currentBrightness = g_settings.getBrightness();
-    SendMessage(g_hwnd_software_slider, TBM_SETPOS, TRUE, 101 - currentBrightness);
-    wchar_t buffer[20];
-    swprintf_s(buffer, L"%d%%", currentBrightness);
-    SetWindowText(g_hwnd_software_value, buffer);
+    int currentSoftwareBrightness = g_settings.getSoftwareBrightness();
+    SendMessage(g_hwnd_software_slider, TBM_SETPOS, TRUE, 101 - currentSoftwareBrightness);
+    wchar_t software_buffer[20];
+    swprintf_s(software_buffer, L"%d%%", currentSoftwareBrightness);
+    SetWindowText(g_hwnd_software_value, software_buffer);
 
     // Create hardware brightness slider
     g_hwnd_hardware_slider = CreateWindowEx(
@@ -257,16 +259,18 @@ void ShowBothSliders(HWND parent, POINT pt)
         65, 210, 65, 20,
         g_hwnd_brightness, (HMENU)110, g_hInstance, nullptr);
 
-    SendMessage(g_hwnd_hardware_slider, TBM_SETPOS, TRUE, 101 - g_settings.getBrightness());
-    swprintf_s(buffer, L"%d%%", g_settings.getBrightness());
-    SetWindowText(g_hwnd_hardware_value, buffer);
+    int currentHardwareBrightness = g_settings.getHardwareBrightness();
+    SendMessage(g_hwnd_hardware_slider, TBM_SETPOS, TRUE, 101 - currentHardwareBrightness);
+    wchar_t hardware_buffer[20];
+    swprintf_s(hardware_buffer, L"%d%%", currentHardwareBrightness);
+    SetWindowText(g_hwnd_hardware_value, hardware_buffer);
 
     SendMessage(g_hwnd_software_slider, TBM_SETRANGE, TRUE, MAKELONG(1, 100));
-    SendMessage(g_hwnd_software_slider, TBM_SETPOS, TRUE, 101 - g_settings.getBrightness());
+    SendMessage(g_hwnd_software_slider, TBM_SETPOS, TRUE, 101 - currentSoftwareBrightness);
     SendMessage(g_hwnd_software_slider, TBM_SETTICFREQ, 10, 0);
 
     SendMessage(g_hwnd_hardware_slider, TBM_SETRANGE, TRUE, MAKELONG(1, 100));
-    SendMessage(g_hwnd_hardware_slider, TBM_SETPOS, TRUE, 101 - g_settings.getBrightness());
+    SendMessage(g_hwnd_hardware_slider, TBM_SETPOS, TRUE, 101 - currentHardwareBrightness);
     SendMessage(g_hwnd_hardware_slider, TBM_SETTICFREQ, 10, 0);
 
     ShowWindow(g_hwnd_brightness, SW_SHOW);
@@ -295,12 +299,9 @@ LRESULT CALLBACK BrightnessSliderProc(HWND hwnd, UINT message, WPARAM wParam, LP
             // Apply software brightness independently
             SetSoftwareBrightness(brightness);
 
-            // Save the new brightness to settings if this is the current mode
-            if (!g_settings.isHardwareMode())
-            {
-                g_settings.setBrightness(brightness);
-                g_settings.save();
-            }
+            // Save the new brightness to settings
+            g_settings.setSoftwareBrightness(brightness);
+            g_settings.save();
         }
         else if (trackbar == g_hwnd_hardware_slider)
         {
@@ -312,12 +313,9 @@ LRESULT CALLBACK BrightnessSliderProc(HWND hwnd, UINT message, WPARAM wParam, LP
             // Apply hardware brightness independently
             SetHardwareBrightness(brightness);
 
-            // Save the new brightness to settings if this is the current mode
-            if (g_settings.isHardwareMode())
-            {
-                g_settings.setBrightness(brightness);
-                g_settings.save();
-            }
+            // Save the new brightness to settings
+            g_settings.setHardwareBrightness(brightness);
+            g_settings.save();
         }
         break;
     }
