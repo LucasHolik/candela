@@ -25,8 +25,14 @@ void ShowBrightnessSlider(HWND parent);
 // Function to show the settings dialog
 void ShowSettingsDialog(HWND parent);
 
+// Function to show the info dialog
+void ShowInfoDialog(HWND parent);
+
 // Window procedure for the brightness slider dialog
 LRESULT CALLBACK BrightnessSliderProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
 
 // Window procedure for the settings dialog
 LRESULT CALLBACK SettingsProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
+
+// Window procedure for the info dialog
+LRESULT CALLBACK InfoProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
