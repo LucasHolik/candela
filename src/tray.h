@@ -3,9 +3,10 @@
 
 // Forward declarations for functions used by tray
 void ShowBrightnessSlider(HWND parent);
-void ShowSettingsDialog(HWND parent, class Settings& settings);
+void ShowSettingsDialog(HWND parent, class Settings &settings);
 
-class Tray {
+class Tray
+{
 public:
     static bool createTray(HWND hwnd);
     static void removeTray(HWND hwnd);

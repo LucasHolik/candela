@@ -7,7 +7,7 @@ class Settings;
 // Global variables for brightness slider
 extern HWND g_slider_hwnd;
 extern HWND g_hwnd_brightness;
-extern HWND g_hwnd_slider;  // Currently active slider (software or hardware)
+extern HWND g_hwnd_slider; // Currently active slider (software or hardware)
 extern HWND g_hwnd_software_slider;
 extern HWND g_hwnd_hardware_slider;
 extern HWND g_hwnd_toggle;

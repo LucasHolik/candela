@@ -14,7 +14,8 @@ Settings g_settings;
 // Forward declarations
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
+{
     g_hInstance = hInstance;
 
     // Initialize common controls
@@ -48,15 +49,16 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         L"Candela Brightness Control",
         WS_OVERLAPPEDWINDOW,
         CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
-        nullptr, nullptr, hInstance, nullptr
-    );
+        nullptr, nullptr, hInstance, nullptr);
 
-    if (!g_hwnd) {
+    if (!g_hwnd)
+    {
         return 1;
     }
 
     // Create tray icon
-    if (!Tray::createTray(g_hwnd)) {
+    if (!Tray::createTray(g_hwnd))
+    {
         MessageBoxW(nullptr, L"Failed to create tray icon", L"Error", MB_OK | MB_ICONERROR);
         return 1;
     }
@@ -64,7 +66,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     // Don't show the main window - only the tray icon
     // ShowWindow(g_hwnd, nCmdShow);
     // UpdateWindow(g_hwnd);
-    
+
     // Only show the window if specifically requested (e.g., for debugging)
     // For normal operation, keep it hidden
     ShowWindow(g_hwnd, SW_HIDE);
@@ -72,7 +74,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     // Main message loop
     MSG msg;
-    while (GetMessage(&msg, nullptr, 0, 0)) {
+    while (GetMessage(&msg, nullptr, 0, 0))
+    {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
@@ -83,30 +86,37 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     return (int)msg.wParam;
 }
 
-LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
-    switch (message) {
-        case WM_CREATE: {
-            break;
+LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+    switch (message)
+    {
+    case WM_CREATE:
+    {
+        break;
+    }
+    case WM_APP + 1:
+    {
+        if (LOWORD(lParam) == WM_LBUTTONDOWN)
+        {
+            // Handle left click - show brightness slider
+            Tray::handleLeftClick(g_hwnd);
         }
-        case WM_APP + 1: {
-            if (LOWORD(lParam) == WM_LBUTTONDOWN) {
-                // Handle left click - show brightness slider
-                Tray::handleLeftClick(g_hwnd);
-            }
-            else if (LOWORD(lParam) == WM_RBUTTONDOWN || LOWORD(lParam) == WM_CONTEXTMENU) {
-                // Handle right click - show context menu
-                POINT pt;
-                GetCursorPos(&pt);
-                Tray::handleRightClick(g_hwnd, pt.x, pt.y);
-            }
-            break;
+        else if (LOWORD(lParam) == WM_RBUTTONDOWN || LOWORD(lParam) == WM_CONTEXTMENU)
+        {
+            // Handle right click - show context menu
+            POINT pt;
+            GetCursorPos(&pt);
+            Tray::handleRightClick(g_hwnd, pt.x, pt.y);
         }
-        case WM_DESTROY: {
-            PostQuitMessage(0);
-            break;
-        }
-        default:
-            return DefWindowProc(hwnd, message, wParam, lParam);
+        break;
+    }
+    case WM_DESTROY:
+    {
+        PostQuitMessage(0);
+        break;
+    }
+    default:
+        return DefWindowProc(hwnd, message, wParam, lParam);
     }
     return 0;
 }

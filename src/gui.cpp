@@ -105,7 +105,6 @@ void ShowSoftwareSlider(HWND parent, POINT pt)
     g_last_show_software = true;
     g_last_show_hardware = false;
 
-    // TODO: Manually adjust this function to show only the software slider
     int window_width = 65;
     int x = pt.x - window_width / 2;
     int y = pt.y - 260;
@@ -137,16 +136,14 @@ void ShowSoftwareSlider(HWND parent, POINT pt)
         g_hwnd_brightness, (HMENU)109, g_hInstance, nullptr);
 
     int currentBrightness = g_settings.getBrightness();
-    SendMessage(g_hwnd_software_slider, TBM_SETPOS, TRUE, currentBrightness);
+    SendMessage(g_hwnd_software_slider, TBM_SETPOS, TRUE, 101 - currentBrightness);
     wchar_t buffer[20];
     swprintf_s(buffer, L"%d%%", currentBrightness);
     SetWindowText(g_hwnd_software_value, buffer);
 
     SendMessage(g_hwnd_software_slider, TBM_SETRANGE, TRUE, MAKELONG(1, 100));
-    SendMessage(g_hwnd_software_slider, TBM_SETPOS, TRUE, g_settings.getBrightness());
+    SendMessage(g_hwnd_software_slider, TBM_SETPOS, TRUE, 101 - g_settings.getBrightness());
     SendMessage(g_hwnd_software_slider, TBM_SETTICFREQ, 10, 0);
-
-    ShowWindow(g_hwnd_brightness, SW_SHOW);
     UpdateWindow(g_hwnd_brightness);
     SetForegroundWindow(g_hwnd_brightness);
 }
@@ -156,7 +153,6 @@ void ShowHardwareSlider(HWND parent, POINT pt)
     g_last_show_software = false;
     g_last_show_hardware = true;
 
-    // TODO: Manually adjust this function to show only the hardware slider
     int window_width = 65;
     int x = pt.x - window_width / 2;
     int y = pt.y - 260;
@@ -188,13 +184,11 @@ void ShowHardwareSlider(HWND parent, POINT pt)
         g_hwnd_brightness, (HMENU)110, g_hInstance, nullptr);
 
     int currentBrightness = g_settings.getBrightness();
-    SendMessage(g_hwnd_hardware_slider, TBM_SETPOS, TRUE, currentBrightness);
+    SendMessage(g_hwnd_hardware_slider, TBM_SETPOS, TRUE, 101 - currentBrightness);
     wchar_t buffer[20];
     swprintf_s(buffer, L"%d%%", currentBrightness);
-    SetWindowText(g_hwnd_hardware_value, buffer);
-
     SendMessage(g_hwnd_hardware_slider, TBM_SETRANGE, TRUE, MAKELONG(1, 100));
-    SendMessage(g_hwnd_hardware_slider, TBM_SETPOS, TRUE, g_settings.getBrightness());
+    SendMessage(g_hwnd_hardware_slider, TBM_SETPOS, TRUE, 101 - g_settings.getBrightness());
     SendMessage(g_hwnd_hardware_slider, TBM_SETTICFREQ, 10, 0);
 
     ShowWindow(g_hwnd_brightness, SW_SHOW);
@@ -207,7 +201,6 @@ void ShowBothSliders(HWND parent, POINT pt)
     g_last_show_software = true;
     g_last_show_hardware = true;
 
-    // TODO: Manually adjust this function to show both sliders
     int window_width = 130;
     int x = pt.x - window_width / 2;
     int y = pt.y - 260;
@@ -240,7 +233,7 @@ void ShowBothSliders(HWND parent, POINT pt)
         g_hwnd_brightness, (HMENU)109, g_hInstance, nullptr);
 
     int currentBrightness = g_settings.getBrightness();
-    SendMessage(g_hwnd_software_slider, TBM_SETPOS, TRUE, currentBrightness);
+    SendMessage(g_hwnd_software_slider, TBM_SETPOS, TRUE, 101 - currentBrightness);
     wchar_t buffer[20];
     swprintf_s(buffer, L"%d%%", currentBrightness);
     SetWindowText(g_hwnd_software_value, buffer);
@@ -264,16 +257,16 @@ void ShowBothSliders(HWND parent, POINT pt)
         65, 210, 65, 20,
         g_hwnd_brightness, (HMENU)110, g_hInstance, nullptr);
 
-    SendMessage(g_hwnd_hardware_slider, TBM_SETPOS, TRUE, currentBrightness);
-    swprintf_s(buffer, L"%d%%", currentBrightness);
+    SendMessage(g_hwnd_hardware_slider, TBM_SETPOS, TRUE, 101 - g_settings.getBrightness());
+    swprintf_s(buffer, L"%d%%", g_settings.getBrightness());
     SetWindowText(g_hwnd_hardware_value, buffer);
 
     SendMessage(g_hwnd_software_slider, TBM_SETRANGE, TRUE, MAKELONG(1, 100));
-    SendMessage(g_hwnd_software_slider, TBM_SETPOS, TRUE, g_settings.getBrightness());
+    SendMessage(g_hwnd_software_slider, TBM_SETPOS, TRUE, 101 - g_settings.getBrightness());
     SendMessage(g_hwnd_software_slider, TBM_SETTICFREQ, 10, 0);
 
     SendMessage(g_hwnd_hardware_slider, TBM_SETRANGE, TRUE, MAKELONG(1, 100));
-    SendMessage(g_hwnd_hardware_slider, TBM_SETPOS, TRUE, g_settings.getBrightness());
+    SendMessage(g_hwnd_hardware_slider, TBM_SETPOS, TRUE, 101 - g_settings.getBrightness());
     SendMessage(g_hwnd_hardware_slider, TBM_SETTICFREQ, 10, 0);
 
     ShowWindow(g_hwnd_brightness, SW_SHOW);
@@ -290,7 +283,7 @@ LRESULT CALLBACK BrightnessSliderProc(HWND hwnd, UINT message, WPARAM wParam, LP
     {
         HWND trackbar = (HWND)lParam;
 
-        int brightness = (int)SendMessage(trackbar, TBM_GETPOS, 0, 0);
+        int brightness = 101 - (int)SendMessage(trackbar, TBM_GETPOS, 0, 0);
 
         if (trackbar == g_hwnd_software_slider)
         {
@@ -373,13 +366,9 @@ LRESULT CALLBACK BrightnessSliderProc(HWND hwnd, UINT message, WPARAM wParam, LP
     return 0;
 }
 
-
-
 // Global variable to track if the settings window class is registered
 
 static bool g_settings_class_registered = false;
-
-
 
 void ShowSettingsDialog(HWND parent)
 
@@ -394,10 +383,7 @@ void ShowSettingsDialog(HWND parent)
         SetForegroundWindow(g_settings_hwnd);
 
         return;
-
     }
-
-
 
     if (!g_settings_class_registered)
 
@@ -419,8 +405,6 @@ void ShowSettingsDialog(HWND parent)
 
         wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
 
-
-
         if (!RegisterClassEx(&wc))
 
         {
@@ -428,14 +412,10 @@ void ShowSettingsDialog(HWND parent)
             MessageBox(nullptr, L"Failed to register settings window class", L"Error", MB_OK | MB_ICONERROR);
 
             return;
-
         }
 
         g_settings_class_registered = true;
-
     }
-
-
 
     g_settings_hwnd = CreateWindowEx(
 
@@ -459,8 +439,6 @@ void ShowSettingsDialog(HWND parent)
 
         nullptr);
 
-
-
     if (!g_settings_hwnd)
 
     {
@@ -468,10 +446,7 @@ void ShowSettingsDialog(HWND parent)
         MessageBox(nullptr, L"Failed to create settings window", L"Error", MB_OK | MB_ICONERROR);
 
         return;
-
     }
-
-
 
     g_hwnd_startup_checkbox = CreateWindowEx(
 
@@ -483,8 +458,6 @@ void ShowSettingsDialog(HWND parent)
 
         g_settings_hwnd, (HMENU)201, g_hInstance, nullptr);
 
-
-
     g_hwnd_software_checkbox = CreateWindowEx(
 
         0, L"BUTTON", L"Show software brightness",
@@ -494,8 +467,6 @@ void ShowSettingsDialog(HWND parent)
         10, 50, 200, 30,
 
         g_settings_hwnd, (HMENU)202, g_hInstance, nullptr);
-
-
 
     g_hwnd_hardware_checkbox = CreateWindowEx(
 
@@ -507,23 +478,16 @@ void ShowSettingsDialog(HWND parent)
 
         g_settings_hwnd, (HMENU)203, g_hInstance, nullptr);
 
-
-
     SendMessage(g_hwnd_startup_checkbox, BM_SETCHECK, g_settings.getStartOnBoot() ? BST_CHECKED : BST_UNCHECKED, 0);
 
     SendMessage(g_hwnd_software_checkbox, BM_SETCHECK, g_settings.getShowSoftwareBrightness() ? BST_CHECKED : BST_UNCHECKED, 0);
 
     SendMessage(g_hwnd_hardware_checkbox, BM_SETCHECK, g_settings.getShowHardwareBrightness() ? BST_CHECKED : BST_UNCHECKED, 0);
 
-
-
     ShowWindow(g_settings_hwnd, SW_SHOW);
 
     UpdateWindow(g_settings_hwnd);
-
 }
-
-
 
 LRESULT CALLBACK SettingsProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 
@@ -555,72 +519,63 @@ LRESULT CALLBACK SettingsProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 
                 break;
 
-                        case 202: // Show software brightness
+            case 202: // Show software brightness
 
-                        {
+            {
 
-                            bool is_checked = SendMessage(g_hwnd_software_checkbox, BM_GETCHECK, 0, 0) == BST_CHECKED;
+                bool is_checked = SendMessage(g_hwnd_software_checkbox, BM_GETCHECK, 0, 0) == BST_CHECKED;
 
-                            if (!is_checked && !g_settings.getShowHardwareBrightness())
+                if (!is_checked && !g_settings.getShowHardwareBrightness())
 
-                            {
+                {
 
-                                MessageBox(hwnd, L"You must have at least one brightness slider enabled.", L"Error", MB_OK | MB_ICONERROR);
+                    MessageBox(hwnd, L"You must have at least one brightness slider enabled.", L"Error", MB_OK | MB_ICONERROR);
 
-                                SendMessage(g_hwnd_software_checkbox, BM_SETCHECK, BST_CHECKED, 0);
+                    SendMessage(g_hwnd_software_checkbox, BM_SETCHECK, BST_CHECKED, 0);
+                }
 
-                            }
+                else
 
-                            else
+                {
 
-                            {
+                    g_settings.setShowSoftwareBrightness(is_checked);
 
-                                g_settings.setShowSoftwareBrightness(is_checked);
+                    g_settings.save();
+                }
 
-                                g_settings.save();
-
-                            }
-
-                            break;
-
-                        }
-
-                        case 203: // Show hardware brightness
-
-                        {
-
-                            bool is_checked = SendMessage(g_hwnd_hardware_checkbox, BM_GETCHECK, 0, 0) == BST_CHECKED;
-
-                            if (!is_checked && !g_settings.getShowSoftwareBrightness())
-
-                            {
-
-                                MessageBox(hwnd, L"You must have at least one brightness slider enabled.", L"Error", MB_OK | MB_ICONERROR);
-
-                                SendMessage(g_hwnd_hardware_checkbox, BM_SETCHECK, BST_CHECKED, 0);
-
-                            }
-
-                            else
-
-                            {
-
-                                g_settings.setShowHardwareBrightness(is_checked);
-
-                                g_settings.save();
-
-                            }
-
-                            break;
-
-                        }
-
+                break;
             }
 
+            case 203: // Show hardware brightness
+
+            {
+
+                bool is_checked = SendMessage(g_hwnd_hardware_checkbox, BM_GETCHECK, 0, 0) == BST_CHECKED;
+
+                if (!is_checked && !g_settings.getShowSoftwareBrightness())
+
+                {
+
+                    MessageBox(hwnd, L"You must have at least one brightness slider enabled.", L"Error", MB_OK | MB_ICONERROR);
+
+                    SendMessage(g_hwnd_hardware_checkbox, BM_SETCHECK, BST_CHECKED, 0);
+                }
+
+                else
+
+                {
+
+                    g_settings.setShowHardwareBrightness(is_checked);
+
+                    g_settings.save();
+                }
+
+                break;
+            }
+            }
         }
 
         break;
-
     }
 
     case WM_CLOSE:
@@ -630,7 +585,6 @@ LRESULT CALLBACK SettingsProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
         ShowWindow(hwnd, SW_HIDE);
 
         break;
-
     }
 
     case WM_DESTROY:
@@ -640,15 +594,12 @@ LRESULT CALLBACK SettingsProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
         g_settings_hwnd = nullptr;
 
         break;
-
     }
 
     default:
 
         return DefWindowProc(hwnd, message, wParam, lParam);
-
     }
 
     return 0;
-
 }

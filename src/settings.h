@@ -2,7 +2,8 @@
 #include <windows.h>
 #include <string>
 
-class Settings {
+class Settings
+{
 public:
     Settings();
     ~Settings();
@@ -33,16 +34,16 @@ private:
     int m_brightness;
     bool m_hardwareMode;
     bool m_startOnBoot;
-    bool m_defaultMode;  // true for hardware by default, false for software
+    bool m_defaultMode; // true for hardware by default, false for software
     bool m_showSoftwareBrightness;
     bool m_showHardwareBrightness;
 
     // Registry key for settings
-    static const wchar_t* const REGISTRY_KEY;
-    static const wchar_t* const BRIGHTNESS_VALUE;
-    static const wchar_t* const MODE_VALUE;
-    static const wchar_t* const START_ON_BOOT_VALUE;
-    static const wchar_t* const DEFAULT_MODE_VALUE;
-    static const wchar_t* const SHOW_SOFTWARE_BRIGHTNESS_VALUE;
-    static const wchar_t* const SHOW_HARDWARE_BRIGHTNESS_VALUE;
+    static const wchar_t *const REGISTRY_KEY;
+    static const wchar_t *const BRIGHTNESS_VALUE;
+    static const wchar_t *const MODE_VALUE;
+    static const wchar_t *const START_ON_BOOT_VALUE;
+    static const wchar_t *const DEFAULT_MODE_VALUE;
+    static const wchar_t *const SHOW_SOFTWARE_BRIGHTNESS_VALUE;
+    static const wchar_t *const SHOW_HARDWARE_BRIGHTNESS_VALUE;
 };
