@@ -1,6 +1,7 @@
 #include "gui.h"
 #include "brightness.h"
 #include "settings.h"
+#include "resource.h"
 #include <commctrl.h>
 #include <windowsx.h>
 
@@ -77,6 +78,8 @@ void ShowBrightnessSlider(HWND parent)
     wc.style = CS_HREDRAW | CS_VREDRAW;
     wc.lpfnWndProc = BrightnessSliderProc;
     wc.hInstance = g_hInstance;
+    wc.hIcon = LoadIcon(g_hInstance, MAKEINTRESOURCE(IDI_ICON1));
+    wc.hIconSm = LoadIcon(g_hInstance, MAKEINTRESOURCE(IDI_ICON1));
     wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
     wc.lpszClassName = L"CandelaBrightnessSlider";
     wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
@@ -364,6 +367,11 @@ LRESULT CALLBACK BrightnessSliderProc(HWND hwnd, UINT message, WPARAM wParam, LP
     }
     break;
   }
+  case WM_SETICON:
+  {
+    // Handle the WM_SETICON message to set the icon for the window
+    return TRUE; // Return TRUE to indicate we handled the message
+  }
   default:
     return DefWindowProc(hwnd, message, wParam, lParam);
   }
@@ -402,6 +410,10 @@ void ShowSettingsDialog(HWND parent)
     wc.lpfnWndProc = SettingsProc;
 
     wc.hInstance = g_hInstance;
+
+    wc.hIcon = LoadIcon(g_hInstance, MAKEINTRESOURCE(IDI_ICON1));
+
+    wc.hIconSm = LoadIcon(g_hInstance, MAKEINTRESOURCE(IDI_ICON1));
 
     wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
 
@@ -451,6 +463,10 @@ void ShowSettingsDialog(HWND parent)
 
     return;
   }
+
+  // Set the big and small icons for the settings window
+  SendMessage(g_settings_hwnd, WM_SETICON, ICON_BIG, (LPARAM)LoadIcon(g_hInstance, MAKEINTRESOURCE(IDI_ICON1)));
+  SendMessage(g_settings_hwnd, WM_SETICON, ICON_SMALL, (LPARAM)LoadIcon(g_hInstance, MAKEINTRESOURCE(IDI_ICON1)));
 
   g_hwnd_startup_checkbox = CreateWindowEx(
 
@@ -600,6 +616,11 @@ LRESULT CALLBACK SettingsProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
     break;
   }
 
+  case WM_SETICON:
+  {
+    // Handle the WM_SETICON message to set the icon for the window
+    return TRUE; // Return TRUE to indicate we handled the message
+  }
   default:
 
     return DefWindowProc(hwnd, message, wParam, lParam);
@@ -624,6 +645,8 @@ void ShowInfoDialog(HWND parent)
     wc.style = CS_HREDRAW | CS_VREDRAW;
     wc.lpfnWndProc = InfoProc;
     wc.hInstance = g_hInstance;
+    wc.hIcon = LoadIcon(g_hInstance, MAKEINTRESOURCE(IDI_ICON1));
+    wc.hIconSm = LoadIcon(g_hInstance, MAKEINTRESOURCE(IDI_ICON1));
     wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
     wc.lpszClassName = L"CandelaInfo";
     wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
@@ -653,6 +676,10 @@ void ShowInfoDialog(HWND parent)
     MessageBox(nullptr, L"Failed to create info window", L"Error", MB_OK | MB_ICONERROR);
     return;
   }
+
+  // Set the big and small icons for the window
+  SendMessage(g_info_hwnd, WM_SETICON, ICON_BIG, (LPARAM)LoadIcon(g_hInstance, MAKEINTRESOURCE(IDI_ICON1)));
+  SendMessage(g_info_hwnd, WM_SETICON, ICON_SMALL, (LPARAM)LoadIcon(g_hInstance, MAKEINTRESOURCE(IDI_ICON1)));
 
   // Create a static text control to display the information
   CreateWindowEx(
@@ -706,6 +733,11 @@ LRESULT CALLBACK InfoProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
   {
     g_info_hwnd = nullptr;
     break;
+  }
+  case WM_SETICON:
+  {
+    // Handle the WM_SETICON message to set the icon for the window
+    return TRUE; // Return TRUE to indicate we handled the message
   }
   default:
     return DefWindowProc(hwnd, message, wParam, lParam);
