@@ -5,12 +5,16 @@
 
 #include "tray.h"
 #include "settings.h"
+#include "brightness.h"
 #include "resource.h"
 
 // Global application instance
 HINSTANCE g_hInstance = nullptr;
 HWND g_hwnd = nullptr;
 Settings g_settings;
+
+// Function to restore brightness settings on startup
+void RestoreBrightnessOnStartup();
 
 // Forward declarations
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
@@ -27,6 +31,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
 
   // Load settings
   g_settings.load();
+
+  // Apply saved brightness settings
+  RestoreBrightnessOnStartup();
 
   // Register window class
   const wchar_t CLASS_NAME[] = L"CandelaTrayWindowClass";
@@ -84,6 +91,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
   // Clean up tray icon
   Tray::removeTray(g_hwnd);
 
+  // Restore brightness/gamma settings
+  CleanupBrightnessControl();
+
   return (int)msg.wParam;
 }
 
@@ -120,4 +130,23 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
     return DefWindowProc(hwnd, message, wParam, lParam);
   }
   return 0;
+}
+
+// Function to restore brightness settings on startup
+void RestoreBrightnessOnStartup()
+{
+  // Initialize brightness control
+  if (!InitBrightnessControl())
+  {
+    // If we can't initialize brightness control, just return
+    return;
+  }
+
+  // Apply both hardware and software brightness settings
+  // Both are always active regardless of UI visibility settings
+  int hardwareBrightness = g_settings.getHardwareBrightness();
+  int softwareBrightness = g_settings.getSoftwareBrightness();
+
+  SetHardwareBrightness(hardwareBrightness);
+  SetSoftwareBrightness(softwareBrightness);
 }
