@@ -147,6 +147,10 @@ void RestoreBrightnessOnStartup()
   int hardwareBrightness = g_settings.getHardwareBrightness();
   int softwareBrightness = g_settings.getSoftwareBrightness();
 
-  SetHardwareBrightness(hardwareBrightness);
-  SetSoftwareBrightness(softwareBrightness);
+  // Apply to all monitors
+  const auto& monitors = GetMonitors();
+  for (size_t i = 0; i < monitors.size(); ++i) {
+      SetHardwareBrightness(static_cast<int>(i), hardwareBrightness);
+      SetSoftwareBrightness(static_cast<int>(i), softwareBrightness);
+  }
 }
