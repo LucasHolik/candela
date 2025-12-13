@@ -1,6 +1,15 @@
 #pragma once
 #include <windows.h>
 #include <string>
+#include <map>
+
+struct MonitorSettings
+{
+  bool showSoftware = true;
+  bool showHardware = true;
+  int lastSoftwareBrightness = 100; // Default to 100% for software (no dimming)
+  int lastHardwareBrightness = 50;  // Default to 50% for hardware
+};
 
 class Settings
 {
@@ -18,39 +27,22 @@ public:
   bool updateStartupRegistry() const;
 
   // Getters
-  int getSoftwareBrightness() const { return m_softwareBrightness; }
-  int getHardwareBrightness() const { return m_hardwareBrightness; }
-  bool isHardwareMode() const { return m_hardwareMode; }
   bool getStartOnBoot() const { return m_startOnBoot; }
-  bool getDefaultMode() const { return m_defaultMode; } // true for hardware, false for software
-  bool getShowSoftwareBrightness() const { return m_showSoftwareBrightness; }
-  bool getShowHardwareBrightness() const { return m_showHardwareBrightness; }
+  MonitorSettings getMonitorSettings(const std::wstring &deviceName) const;
 
   // Setters
-  void setSoftwareBrightness(int brightness) { m_softwareBrightness = brightness; }
-  void setHardwareBrightness(int brightness) { m_hardwareBrightness = brightness; }
-  void setHardwareMode(bool hardwareMode) { m_hardwareMode = hardwareMode; }
   void setStartOnBoot(bool startOnBoot) { m_startOnBoot = startOnBoot; }
-  void setDefaultMode(bool defaultMode) { m_defaultMode = defaultMode; }
-  void setShowSoftwareBrightness(bool show) { m_showSoftwareBrightness = show; }
-  void setShowHardwareBrightness(bool show) { m_showHardwareBrightness = show; }
+  void setMonitorSettings(const std::wstring &deviceName, const MonitorSettings &settings);
 
 private:
-  int m_softwareBrightness;
-  int m_hardwareBrightness;
-  bool m_hardwareMode;
   bool m_startOnBoot;
-  bool m_defaultMode; // true for hardware by default, false for software
-  bool m_showSoftwareBrightness;
-  bool m_showHardwareBrightness;
+  std::map<std::wstring, MonitorSettings> m_monitorSettings;
 
   // Registry key for settings
   static const wchar_t *const REGISTRY_KEY;
-  static const wchar_t *const SOFTWARE_BRIGHTNESS_VALUE;
-  static const wchar_t *const HARDWARE_BRIGHTNESS_VALUE;
-  static const wchar_t *const MODE_VALUE;
+  static const wchar_t *const MONITORS_SUBKEY;
   static const wchar_t *const START_ON_BOOT_VALUE;
-  static const wchar_t *const DEFAULT_MODE_VALUE;
-  static const wchar_t *const SHOW_SOFTWARE_BRIGHTNESS_VALUE;
-  static const wchar_t *const SHOW_HARDWARE_BRIGHTNESS_VALUE;
+
+  // Helper to sanitize device name for registry key
+  static std::wstring sanitizeDeviceName(const std::wstring &deviceName);
 };

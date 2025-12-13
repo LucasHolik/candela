@@ -50,7 +50,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
 
   RegisterClassExW(&wc);
 
-  // Create main window
+  // Create main window (hidden helper window)
   g_hwnd = CreateWindowExW(
       0,
       CLASS_NAME,
@@ -71,12 +71,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
     return 1;
   }
 
-  // Don't show the main window - only the tray icon
-  // ShowWindow(g_hwnd, nCmdShow);
-  // UpdateWindow(g_hwnd);
-
-  // Only show the window if specifically requested (e.g., for debugging)
-  // For normal operation, keep it hidden
+  // Ensure window is hidden as we run in the tray
   ShowWindow(g_hwnd, SW_HIDE);
   UpdateWindow(g_hwnd);
 
@@ -92,7 +87,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
   Tray::removeTray(g_hwnd);
 
   // Restore brightness/gamma settings
-  CleanupBrightnessControl();
+  BrightnessController::Cleanup();
 
   return (int)msg.wParam;
 }
@@ -136,21 +131,19 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 void RestoreBrightnessOnStartup()
 {
   // Initialize brightness control
-  if (!InitBrightnessControl())
+  if (!BrightnessController::Initialize())
   {
-    // If we can't initialize brightness control, just return
     return;
   }
 
-  // Apply both hardware and software brightness settings
-  // Both are always active regardless of UI visibility settings
-  int hardwareBrightness = g_settings.getHardwareBrightness();
-  int softwareBrightness = g_settings.getSoftwareBrightness();
+  // Apply saved brightness settings per monitor
+  const auto &monitors = BrightnessController::GetMonitors();
+  for (size_t i = 0; i < monitors.size(); ++i)
+  {
+    MonitorSettings settings = g_settings.getMonitorSettings(monitors[i].deviceName);
 
-  // Apply to all monitors
-  const auto& monitors = GetMonitors();
-  for (size_t i = 0; i < monitors.size(); ++i) {
-      SetHardwareBrightness(static_cast<int>(i), hardwareBrightness);
-      SetSoftwareBrightness(static_cast<int>(i), softwareBrightness);
+    // Apply saved values
+    BrightnessController::SetHardwareBrightness(static_cast<int>(i), settings.lastHardwareBrightness);
+    BrightnessController::SetSoftwareBrightness(static_cast<int>(i), settings.lastSoftwareBrightness);
   }
 }

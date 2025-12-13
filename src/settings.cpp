@@ -1,28 +1,57 @@
 #include "settings.h"
 #include <shlobj.h>
 #include <string>
+#include <algorithm>
 
 const wchar_t *const Settings::REGISTRY_KEY = L"Software\\Candela";
-const wchar_t *const Settings::SOFTWARE_BRIGHTNESS_VALUE = L"SoftwareBrightness";
-const wchar_t *const Settings::HARDWARE_BRIGHTNESS_VALUE = L"HardwareBrightness";
-const wchar_t *const Settings::MODE_VALUE = L"HardwareMode";
+const wchar_t *const Settings::MONITORS_SUBKEY = L"Monitors";
 const wchar_t *const Settings::START_ON_BOOT_VALUE = L"StartOnBoot";
-const wchar_t *const Settings::DEFAULT_MODE_VALUE = L"DefaultMode";
-const wchar_t *const Settings::SHOW_SOFTWARE_BRIGHTNESS_VALUE = L"ShowSoftwareBrightness";
-const wchar_t *const Settings::SHOW_HARDWARE_BRIGHTNESS_VALUE = L"ShowHardwareBrightness";
 
 Settings::Settings()
-    : m_softwareBrightness(50), m_hardwareBrightness(50), m_hardwareMode(false) // Default to software mode
-      ,
-      m_startOnBoot(false), m_defaultMode(false) // Default to software as primary mode
-      ,
-      m_showSoftwareBrightness(true), m_showHardwareBrightness(true)
+    : m_startOnBoot(false)
 {
 }
 
 Settings::~Settings()
 {
   save();
+}
+
+std::wstring Settings::sanitizeDeviceName(const std::wstring &deviceName)
+{
+  std::wstring sanitized;
+  sanitized.reserve(deviceName.length());
+  for (wchar_t c : deviceName)
+  {
+    if (c == L'\\')
+    {
+      sanitized += L"##";
+    }
+    else if (c == L'#')
+    {
+      sanitized += L"#0";
+    }
+    else
+    {
+      sanitized += c;
+    }
+  }
+  return sanitized;
+}
+
+MonitorSettings Settings::getMonitorSettings(const std::wstring &deviceName) const
+{
+  auto it = m_monitorSettings.find(deviceName);
+  if (it != m_monitorSettings.end())
+  {
+    return it->second;
+  }
+  return MonitorSettings(); // Return defaults
+}
+
+void Settings::setMonitorSettings(const std::wstring &deviceName, const MonitorSettings &settings)
+{
+  m_monitorSettings[deviceName] = settings;
 }
 
 bool Settings::load()
@@ -34,32 +63,6 @@ bool Settings::load()
   {
     DWORD value, size = sizeof(DWORD);
 
-    // Load software brightness
-    result = RegQueryValueEx(hKey, SOFTWARE_BRIGHTNESS_VALUE, nullptr, nullptr,
-                             reinterpret_cast<LPBYTE>(&value), &size);
-    if (result == ERROR_SUCCESS)
-    {
-      m_softwareBrightness = static_cast<int>(value);
-    }
-
-    // Load hardware brightness
-    size = sizeof(DWORD);
-    result = RegQueryValueEx(hKey, HARDWARE_BRIGHTNESS_VALUE, nullptr, nullptr,
-                             reinterpret_cast<LPBYTE>(&value), &size);
-    if (result == ERROR_SUCCESS)
-    {
-      m_hardwareBrightness = static_cast<int>(value);
-    }
-
-    // Load hardware mode
-    size = sizeof(DWORD);
-    result = RegQueryValueEx(hKey, MODE_VALUE, nullptr, nullptr,
-                             reinterpret_cast<LPBYTE>(&value), &size);
-    if (result == ERROR_SUCCESS)
-    {
-      m_hardwareMode = (value != 0);
-    }
-
     // Load start on boot
     size = sizeof(DWORD);
     result = RegQueryValueEx(hKey, START_ON_BOOT_VALUE, nullptr, nullptr,
@@ -69,31 +72,84 @@ bool Settings::load()
       m_startOnBoot = (value != 0);
     }
 
-    // Load default mode
-    size = sizeof(DWORD);
-    result = RegQueryValueEx(hKey, DEFAULT_MODE_VALUE, nullptr, nullptr,
-                             reinterpret_cast<LPBYTE>(&value), &size);
+    // Load Monitors
+    HKEY hMonitorsKey;
+    result = RegOpenKeyEx(hKey, MONITORS_SUBKEY, 0, KEY_READ, &hMonitorsKey);
     if (result == ERROR_SUCCESS)
     {
-      m_defaultMode = (value != 0);
-    }
+      wchar_t subKeyName[256];
+      DWORD index = 0;
+      DWORD subKeyLen = 256;
+      while (RegEnumKeyEx(hMonitorsKey, index, subKeyName, &subKeyLen, nullptr, nullptr, nullptr, nullptr) == ERROR_SUCCESS)
+      {
+        std::wstring sanitizedName = subKeyName;
+        std::wstring realName;
+        realName.reserve(sanitizedName.length());
 
-    // Load show software brightness
-    size = sizeof(DWORD);
-    result = RegQueryValueEx(hKey, SHOW_SOFTWARE_BRIGHTNESS_VALUE, nullptr, nullptr,
-                             reinterpret_cast<LPBYTE>(&value), &size);
-    if (result == ERROR_SUCCESS)
-    {
-      m_showSoftwareBrightness = (value != 0);
-    }
+        for (size_t i = 0; i < sanitizedName.length(); ++i)
+        {
+          if (sanitizedName[i] == L'#')
+          {
+            if (i + 1 < sanitizedName.length())
+            {
+              if (sanitizedName[i + 1] == L'#')
+              {
+                realName += L'\\';
+                i++;
+              }
+              else if (sanitizedName[i + 1] == L'0')
+              {
+                realName += L'#';
+                i++;
+              }
+              else
+              {
+                // Legacy fallback: single # treated as backslash
+                realName += L'\\';
+              }
+            }
+            else
+            {
+              // Trailing # (legacy)
+              realName += L'\\';
+            }
+          }
+          else
+          {
+            realName += sanitizedName[i];
+          }
+        }
 
-    // Load show hardware brightness
-    size = sizeof(DWORD);
-    result = RegQueryValueEx(hKey, SHOW_HARDWARE_BRIGHTNESS_VALUE, nullptr, nullptr,
-                             reinterpret_cast<LPBYTE>(&value), &size);
-    if (result == ERROR_SUCCESS)
-    {
-      m_showHardwareBrightness = (value != 0);
+        MonitorSettings settings;
+        HKEY hMonitorKey;
+        if (RegOpenKeyEx(hMonitorsKey, subKeyName, 0, KEY_READ, &hMonitorKey) == ERROR_SUCCESS)
+        {
+          DWORD dwVal;
+          DWORD dwSize = sizeof(DWORD);
+
+          if (RegQueryValueEx(hMonitorKey, L"ShowSoftware", nullptr, nullptr, (LPBYTE)&dwVal, &dwSize) == ERROR_SUCCESS)
+            settings.showSoftware = (dwVal != 0);
+
+          dwSize = sizeof(DWORD);
+          if (RegQueryValueEx(hMonitorKey, L"ShowHardware", nullptr, nullptr, (LPBYTE)&dwVal, &dwSize) == ERROR_SUCCESS)
+            settings.showHardware = (dwVal != 0);
+
+          dwSize = sizeof(DWORD);
+          if (RegQueryValueEx(hMonitorKey, L"LastSoftware", nullptr, nullptr, (LPBYTE)&dwVal, &dwSize) == ERROR_SUCCESS)
+            settings.lastSoftwareBrightness = (int)dwVal;
+
+          dwSize = sizeof(DWORD);
+          if (RegQueryValueEx(hMonitorKey, L"LastHardware", nullptr, nullptr, (LPBYTE)&dwVal, &dwSize) == ERROR_SUCCESS)
+            settings.lastHardwareBrightness = (int)dwVal;
+
+          RegCloseKey(hMonitorKey);
+          m_monitorSettings[realName] = settings;
+        }
+
+        index++;
+        subKeyLen = 256;
+      }
+      RegCloseKey(hMonitorsKey);
     }
 
     RegCloseKey(hKey);
@@ -118,40 +174,44 @@ bool Settings::save() const
 
   DWORD value;
 
-  // Save software brightness
-  value = static_cast<DWORD>(m_softwareBrightness);
-  RegSetValueEx(hKey, SOFTWARE_BRIGHTNESS_VALUE, 0, REG_DWORD,
-                reinterpret_cast<const BYTE *>(&value), sizeof(value));
-
-  // Save hardware brightness
-  value = static_cast<DWORD>(m_hardwareBrightness);
-  RegSetValueEx(hKey, HARDWARE_BRIGHTNESS_VALUE, 0, REG_DWORD,
-                reinterpret_cast<const BYTE *>(&value), sizeof(value));
-
-  // Save hardware mode
-  value = m_hardwareMode ? 1 : 0;
-  RegSetValueEx(hKey, MODE_VALUE, 0, REG_DWORD,
-                reinterpret_cast<const BYTE *>(&value), sizeof(value));
-
   // Save start on boot
   value = m_startOnBoot ? 1 : 0;
   RegSetValueEx(hKey, START_ON_BOOT_VALUE, 0, REG_DWORD,
                 reinterpret_cast<const BYTE *>(&value), sizeof(value));
 
-  // Save default mode
-  value = m_defaultMode ? 1 : 0;
-  RegSetValueEx(hKey, DEFAULT_MODE_VALUE, 0, REG_DWORD,
-                reinterpret_cast<const BYTE *>(&value), sizeof(value));
+  // Save Monitors
+  HKEY hMonitorsKey;
+  result = RegCreateKeyEx(hKey, MONITORS_SUBKEY, 0, nullptr,
+                          REG_OPTION_NON_VOLATILE, KEY_WRITE, nullptr, &hMonitorsKey, nullptr);
 
-  // Save show software brightness
-  value = m_showSoftwareBrightness ? 1 : 0;
-  RegSetValueEx(hKey, SHOW_SOFTWARE_BRIGHTNESS_VALUE, 0, REG_DWORD,
-                reinterpret_cast<const BYTE *>(&value), sizeof(value));
+  if (result == ERROR_SUCCESS)
+  {
+    for (const auto &pair : m_monitorSettings)
+    {
+      std::wstring sanitizedName = sanitizeDeviceName(pair.first);
+      const MonitorSettings &settings = pair.second;
 
-  // Save show hardware brightness
-  value = m_showHardwareBrightness ? 1 : 0;
-  RegSetValueEx(hKey, SHOW_HARDWARE_BRIGHTNESS_VALUE, 0, REG_DWORD,
-                reinterpret_cast<const BYTE *>(&value), sizeof(value));
+      HKEY hMonitorKey;
+      if (RegCreateKeyEx(hMonitorsKey, sanitizedName.c_str(), 0, nullptr,
+                         REG_OPTION_NON_VOLATILE, KEY_WRITE, nullptr, &hMonitorKey, nullptr) == ERROR_SUCCESS)
+      {
+        value = settings.showSoftware ? 1 : 0;
+        RegSetValueEx(hMonitorKey, L"ShowSoftware", 0, REG_DWORD, (const BYTE *)&value, sizeof(value));
+
+        value = settings.showHardware ? 1 : 0;
+        RegSetValueEx(hMonitorKey, L"ShowHardware", 0, REG_DWORD, (const BYTE *)&value, sizeof(value));
+
+        value = (DWORD)settings.lastSoftwareBrightness;
+        RegSetValueEx(hMonitorKey, L"LastSoftware", 0, REG_DWORD, (const BYTE *)&value, sizeof(value));
+
+        value = (DWORD)settings.lastHardwareBrightness;
+        RegSetValueEx(hMonitorKey, L"LastHardware", 0, REG_DWORD, (const BYTE *)&value, sizeof(value));
+
+        RegCloseKey(hMonitorKey);
+      }
+    }
+    RegCloseKey(hMonitorsKey);
+  }
 
   RegCloseKey(hKey);
 

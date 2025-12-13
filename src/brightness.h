@@ -3,38 +3,93 @@
 #include <vector>
 #include <string>
 
-struct Monitor {
-    HMONITOR hMonitor;
-    HDC hdc; // For software brightness
-    std::wstring deviceName;
-    int softwareBrightness;
-    int hardwareBrightness;
-    HANDLE hPhysicalMonitor; // For hardware brightness (DDC/CI)
-    bool supportsHardwareBrightness;
-    
-    Monitor() : hMonitor(nullptr), hdc(nullptr), softwareBrightness(100), hardwareBrightness(50), hPhysicalMonitor(nullptr), supportsHardwareBrightness(false) {}
+/**
+ * @brief Represents a physical or logical display monitor.
+ *
+ * Contains handles and state information for controlling both
+ * software (gamma-based) and hardware (DDC/CI) brightness.
+ */
+struct Monitor
+{
+  HMONITOR hMonitor;
+  HDC hdc; // Device Context for software brightness (Gamma)
+  std::wstring deviceName;
+  int softwareBrightness;  // Current software brightness level (1-100)
+  int hardwareBrightness;  // Current hardware brightness level (0-100)
+  HANDLE hPhysicalMonitor; // Handle for hardware brightness (DDC/CI)
+  bool supportsHardwareBrightness;
+
+  Monitor()
+      : hMonitor(nullptr),
+        hdc(nullptr),
+        softwareBrightness(100),
+        hardwareBrightness(50),
+        hPhysicalMonitor(nullptr),
+        supportsHardwareBrightness(false) {}
 };
 
-// Function to refresh the list of monitors
-bool RefreshMonitorList();
+/**
+ * @brief Static controller for managing monitor brightness operations.
+ *
+ * Handles enumeration of monitors and application of brightness changes
+ * via both software (gamma ramp) and hardware (DDC/CI) methods.
+ */
+class BrightnessController
+{
+public:
+  // Prevent instantiation
+  BrightnessController() = delete;
 
-// Get the list of monitors
-const std::vector<Monitor>& GetMonitors();
+  /**
+   * @brief Initializes the brightness control system and enumerates monitors.
+   * @return true if initialization was successful.
+   */
+  static bool Initialize();
 
-// Function to set hardware brightness (via DDC/CI) for a specific monitor
-bool SetHardwareBrightness(int monitorIndex, int brightness);
+  /**
+   * @brief Refreshes the list of connected monitors.
+   * @return true if monitors were found.
+   */
+  static bool RefreshMonitors();
 
-// Function to set software brightness (via gamma) for a specific monitor
-bool SetSoftwareBrightness(int monitorIndex, int brightness);
+  /**
+   * @brief Cleans up resources (device contexts, physical monitor handles).
+   */
+  static void Cleanup();
 
-// Function to get current hardware brightness for a specific monitor
-int GetHardwareBrightness(int monitorIndex);
+  /**
+   * @brief Retrieves the list of currently detected monitors.
+   * @return A constant reference to the vector of Monitor objects.
+   */
+  static const std::vector<Monitor> &GetMonitors();
 
-// Function to get current software brightness for a specific monitor
-int GetSoftwareBrightness(int monitorIndex);
+  /**
+   * @brief Sets the hardware brightness for a specific monitor.
+   * @param monitorIndex Index of the monitor in the list.
+   * @param brightness Desired brightness level (0-100).
+   * @return true if the operation succeeded.
+   */
+  static bool SetHardwareBrightness(int monitorIndex, int brightness);
 
-// Initialize brightness control system
-bool InitBrightnessControl();
+  /**
+   * @brief Sets the software brightness for a specific monitor.
+   * @param monitorIndex Index of the monitor in the list.
+   * @param brightness Desired brightness level (1-100).
+   * @return true if the operation succeeded.
+   */
+  static bool SetSoftwareBrightness(int monitorIndex, int brightness);
 
-// Cleanup brightness control system
-void CleanupBrightnessControl();
+  /**
+   * @brief Gets the current hardware brightness for a specific monitor.
+   * @param monitorIndex Index of the monitor in the list.
+   * @return Current brightness (0-100), or -1 if the index is invalid or an error occurs.
+   */
+  static int GetHardwareBrightness(int monitorIndex);
+
+  /**
+   * @brief Gets the current software brightness for a specific monitor.
+   * @param monitorIndex Index of the monitor in the list.
+   * @return Current brightness (1-100), or -1 if the index is invalid or an error occurs.
+   */
+  static int GetSoftwareBrightness(int monitorIndex);
+};
