@@ -54,7 +54,9 @@ static double MapBrightnessToSafeRange(int brightness)
 bool BrightnessController::Initialize()
 {
   if (g_initialized)
+  {
     return true;
+  }
 
   // Refresh the list to initialize
   if (RefreshMonitors())
@@ -73,7 +75,12 @@ bool BrightnessController::RefreshMonitors()
   // Enumerate display monitors
   EnumDisplayMonitors(nullptr, nullptr, MonitorEnumProc, reinterpret_cast<LPARAM>(&g_monitors));
 
-  return !g_monitors.empty();
+  if (!g_monitors.empty())
+  {
+    g_initialized = true;
+    return true;
+  }
+  return false;
 }
 
 void BrightnessController::Cleanup()
@@ -155,7 +162,16 @@ bool BrightnessController::SetHardwareBrightness(int monitorIndex, int brightnes
 
   monitor.hardwareBrightness = brightness;
 
-  return SetMonitorBrightness(monitor.hPhysicalMonitor, brightness);
+  for (int attempt = 1; attempt <= 5; ++attempt)
+  {
+    if (SetMonitorBrightness(monitor.hPhysicalMonitor, brightness))
+    {
+      return true;
+    }
+    Sleep(50);
+  }
+
+  return false;
 }
 
 int BrightnessController::GetSoftwareBrightness(int monitorIndex)
@@ -197,17 +213,26 @@ BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT, LPARAM 
   if (GetNumberOfPhysicalMonitorsFromHMONITOR(hMonitor, &monitorCount) && monitorCount > 0)
   {
     auto *physicalMonitors = new PHYSICAL_MONITOR[monitorCount];
-    if (GetPhysicalMonitorsFromHMONITOR(hMonitor, monitorCount, physicalMonitors))
-    {
-      // Support the first physical monitor associated with this logical monitor
-      monitor.hPhysicalMonitor = physicalMonitors[0].hPhysicalMonitor;
 
-      // Close handles for any additional physical monitors (unsupported in this version)
-      for (DWORD i = 1; i < monitorCount; i++)
+    for (int attempt = 1; attempt <= 5; ++attempt)
+    {
+      if (GetPhysicalMonitorsFromHMONITOR(hMonitor, monitorCount, physicalMonitors))
       {
-        DestroyPhysicalMonitor(physicalMonitors[i].hPhysicalMonitor);
+        if (physicalMonitors[0].hPhysicalMonitor != nullptr)
+        {
+          monitor.hPhysicalMonitor = physicalMonitors[0].hPhysicalMonitor;
+
+          // Close handles for any additional physical monitors (unsupported in this version)
+          for (DWORD i = 1; i < monitorCount; i++)
+          {
+            DestroyPhysicalMonitor(physicalMonitors[i].hPhysicalMonitor);
+          }
+          break;
+        }
       }
+      Sleep(100);
     }
+
     delete[] physicalMonitors;
   }
 
@@ -240,13 +265,28 @@ BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT, LPARAM 
   }
 
   // 2. Hardware Brightness
-  if (monitor.hPhysicalMonitor)
+  if (monitor.hPhysicalMonitor != nullptr)
   {
     DWORD minB, curB, maxB;
-    if (GetMonitorBrightness(monitor.hPhysicalMonitor, &minB, &curB, &maxB))
+    bool success = false;
+    for (int attempt = 1; attempt <= 5; ++attempt)
     {
-      monitor.hardwareBrightness = curB;
-      monitor.supportsHardwareBrightness = true;
+      if (GetMonitorBrightness(monitor.hPhysicalMonitor, &minB, &curB, &maxB))
+      {
+        monitor.hardwareBrightness = curB;
+        monitor.supportsHardwareBrightness = true;
+        success = true;
+        break;
+      }
+      else
+      {
+        Sleep(50); // Wait 50ms before retrying
+      }
+    }
+
+    if (!success)
+    {
+      monitor.supportsHardwareBrightness = false;
     }
   }
 

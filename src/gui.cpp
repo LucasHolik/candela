@@ -66,8 +66,6 @@ static bool g_settings_class_registered = false;
 
 void ShowBrightnessSlider(HWND parent)
 {
-  // Refresh monitor list to handle hotplugging events
-  BrightnessController::RefreshMonitors();
   const auto &monitors = BrightnessController::GetMonitors();
   int monitorCount = (int)monitors.size();
 
