@@ -25,7 +25,7 @@ Make sure all of these tools are available in your system's PATH.
 1.  Clone the repository:
 
     ```sh
-    git clone https://github.com/your-username/candela.git
+    git clone https://github.com/LucasHolik/candela.git
     cd candela
     ```
 

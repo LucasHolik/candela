@@ -32,9 +32,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
   // Load settings
   g_settings.load();
 
-  // Apply saved brightness settings
-  RestoreBrightnessOnStartup();
-
   // Register window class
   const wchar_t CLASS_NAME[] = L"CandelaTrayWindowClass";
   WNDCLASSEXW wc = {};
@@ -75,6 +72,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
   ShowWindow(g_hwnd, SW_HIDE);
   UpdateWindow(g_hwnd);
 
+  // Apply saved brightness settings (moved after window creation)
+  RestoreBrightnessOnStartup();
+
   // Main message loop
   MSG msg;
   while (GetMessage(&msg, nullptr, 0, 0))
@@ -98,6 +98,19 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
   {
   case WM_CREATE:
   {
+    break;
+  }
+  case WM_DISPLAYCHANGE:
+  {
+    BrightnessController::RefreshMonitors();
+    break;
+  }
+  case WM_POWERBROADCAST:
+  {
+    if (wParam == PBT_APMRESUMEAUTOMATIC)
+    {
+      BrightnessController::RefreshMonitors();
+    }
     break;
   }
   case WM_APP + 1:
