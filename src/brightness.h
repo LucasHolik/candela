@@ -18,6 +18,8 @@ struct Monitor
   int hardwareBrightness;  // Current hardware brightness level (0-100)
   HANDLE hPhysicalMonitor; // Handle for hardware brightness (DDC/CI)
   bool supportsHardwareBrightness;
+  DWORD hwNativeMin; // Monitor's native DDC/CI brightness minimum
+  DWORD hwNativeMax; // Monitor's native DDC/CI brightness maximum
 
   Monitor()
       : hMonitor(nullptr),
@@ -25,7 +27,9 @@ struct Monitor
         softwareBrightness(100),
         hardwareBrightness(50),
         hPhysicalMonitor(nullptr),
-        supportsHardwareBrightness(false) {}
+        supportsHardwareBrightness(false),
+        hwNativeMin(0),
+        hwNativeMax(100) {}
 };
 
 /**

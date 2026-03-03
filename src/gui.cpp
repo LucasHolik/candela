@@ -43,7 +43,8 @@ namespace GuiConstants
   const int WINDOW_BASE_HEIGHT = 260;
 
   // Slider Range
-  const int SLIDER_MIN = 1;
+  const int SLIDER_MIN = 1;    // Software brightness minimum (gamma cannot safely reach 0)
+  const int HW_SLIDER_MIN = 0; // Hardware brightness minimum (DDC/CI supports true 0)
   const int SLIDER_MAX = 100;
 }
 
@@ -63,6 +64,19 @@ static bool g_settings_class_registered = false;
 // -----------------------------------------------------------------------------------------------
 // Brightness Slider Window
 // -----------------------------------------------------------------------------------------------
+
+// Subclass proc that forwards Escape/Enter from child slider controls to the parent window,
+// allowing the brightness popup to be dismissed by keyboard even when a slider has focus.
+static LRESULT CALLBACK SliderKeyboardProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam,
+                                           UINT_PTR /*uIdSubclass*/, DWORD_PTR /*dwRefData*/)
+{
+  if (msg == WM_KEYDOWN && (wParam == VK_ESCAPE || wParam == VK_RETURN))
+  {
+    SendMessage(GetParent(hwnd), WM_KEYDOWN, wParam, lParam);
+    return 0;
+  }
+  return DefSubclassProc(hwnd, msg, wParam, lParam);
+}
 
 void ShowBrightnessSlider(HWND parent)
 {
@@ -136,10 +150,6 @@ void ShowBrightnessSlider(HWND parent)
 
   int screenLeft = mi.rcMonitor.left;
   int screenTop = mi.rcMonitor.top;
-  if (x < 0)
-    x = 0;
-  if (y < 0)
-    y = 0;
   if (x < screenLeft)
     x = screenLeft;
   if (y < screenTop)
@@ -215,9 +225,12 @@ void ShowBrightnessSlider(HWND parent)
 
       // Initialize slider value
       int val = BrightnessController::GetSoftwareBrightness(i);
+      if (val < 1)
+        val = 100; // Defensive fallback
       SendMessage(hSlider, TBM_SETRANGE, TRUE, MAKELONG(SLIDER_MIN, SLIDER_MAX));
-      SendMessage(hSlider, TBM_SETPOS, TRUE, 101 - val); // Invert for vertical slider
+      SendMessage(hSlider, TBM_SETPOS, TRUE, SLIDER_MAX + SLIDER_MIN - val); // Invert: top = 100%
       SendMessage(hSlider, TBM_SETTICFREQ, 10, 0);
+      SetWindowSubclass(hSlider, SliderKeyboardProc, 0, 0);
 
       wchar_t buffer[20];
       swprintf_s(buffer, L"%d%%", val);
@@ -248,9 +261,12 @@ void ShowBrightnessSlider(HWND parent)
           g_hwnd_brightness, (HMENU)(intptr_t)(baseID + OFFSET_HW_VALUE), g_hInstance, nullptr);
 
       int val = BrightnessController::GetHardwareBrightness(i);
-      SendMessage(hSlider, TBM_SETRANGE, TRUE, MAKELONG(SLIDER_MIN, SLIDER_MAX));
-      SendMessage(hSlider, TBM_SETPOS, TRUE, 101 - val);
+      if (val < 0)
+        val = 50; // Defensive fallback
+      SendMessage(hSlider, TBM_SETRANGE, TRUE, MAKELONG(HW_SLIDER_MIN, SLIDER_MAX));
+      SendMessage(hSlider, TBM_SETPOS, TRUE, SLIDER_MAX - val); // Invert: top = 100%, bottom = 0%
       SendMessage(hSlider, TBM_SETTICFREQ, 10, 0);
+      SetWindowSubclass(hSlider, SliderKeyboardProc, 0, 0);
 
       wchar_t buffer[20];
       swprintf_s(buffer, L"%d%%", val);
@@ -288,7 +304,11 @@ LRESULT CALLBACK BrightnessSliderProc(HWND hwnd, UINT message, WPARAM wParam, LP
     {
       int monitorIndex = relativeID / ID_SLIDER_STRIDE;
       int type = relativeID % ID_SLIDER_STRIDE;
-      int brightness = 101 - (int)SendMessage(trackbar, TBM_GETPOS, 0, 0);
+      int pos = (int)SendMessage(trackbar, TBM_GETPOS, 0, 0);
+      // Invert position back to brightness: software uses [1,100], hardware uses [0,100]
+      int brightness = (type == OFFSET_SW_SLIDER)
+                           ? (SLIDER_MAX + SLIDER_MIN - pos)
+                           : (SLIDER_MAX - pos);
 
       const auto &monitors = BrightnessController::GetMonitors();
       if (monitorIndex < (int)monitors.size())

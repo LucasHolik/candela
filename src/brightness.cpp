@@ -162,9 +162,19 @@ bool BrightnessController::SetHardwareBrightness(int monitorIndex, int brightnes
 
   monitor.hardwareBrightness = brightness;
 
+  // Map the normalized 0-100 value to the monitor's native brightness range
+  DWORD nativeBrightness = monitor.hwNativeMin;
+  if (monitor.hwNativeMax > monitor.hwNativeMin)
+  {
+    nativeBrightness = monitor.hwNativeMin +
+                       static_cast<DWORD>(std::round(
+                           static_cast<double>(brightness) *
+                           (monitor.hwNativeMax - monitor.hwNativeMin) / 100.0));
+  }
+
   for (int attempt = 1; attempt <= 5; ++attempt)
   {
-    if (SetMonitorBrightness(monitor.hPhysicalMonitor, brightness))
+    if (SetMonitorBrightness(monitor.hPhysicalMonitor, nativeBrightness))
     {
       return true;
     }
@@ -177,14 +187,14 @@ bool BrightnessController::SetHardwareBrightness(int monitorIndex, int brightnes
 int BrightnessController::GetSoftwareBrightness(int monitorIndex)
 {
   if (monitorIndex < 0 || static_cast<size_t>(monitorIndex) >= g_monitors.size())
-    return MAX_BRIGHTNESS;
+    return -1;
   return g_monitors[monitorIndex].softwareBrightness;
 }
 
 int BrightnessController::GetHardwareBrightness(int monitorIndex)
 {
   if (monitorIndex < 0 || static_cast<size_t>(monitorIndex) >= g_monitors.size())
-    return 50; // Default center
+    return -1;
   return g_monitors[monitorIndex].hardwareBrightness;
 }
 
@@ -228,6 +238,15 @@ BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT, LPARAM 
             DestroyPhysicalMonitor(physicalMonitors[i].hPhysicalMonitor);
           }
           break;
+        }
+        else
+        {
+          // Call succeeded but returned a null handle — release all entries before retrying
+          for (DWORD i = 0; i < monitorCount; i++)
+          {
+            if (physicalMonitors[i].hPhysicalMonitor)
+              DestroyPhysicalMonitor(physicalMonitors[i].hPhysicalMonitor);
+          }
         }
       }
       Sleep(100);
@@ -273,7 +292,21 @@ BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT, LPARAM 
     {
       if (GetMonitorBrightness(monitor.hPhysicalMonitor, &minB, &curB, &maxB))
       {
-        monitor.hardwareBrightness = curB;
+        monitor.hwNativeMin = minB;
+        monitor.hwNativeMax = maxB;
+        if (maxB > minB)
+        {
+          // Clamp curB to [minB, maxB] before arithmetic: some DDC/CI implementations
+          // return values slightly outside the reported range, and unsigned underflow
+          // on DWORD subtraction would produce UB when cast back to int.
+          curB = std::max(minB, std::min(curB, maxB));
+          double normalized = static_cast<double>(curB - minB) / (maxB - minB) * 100.0;
+          monitor.hardwareBrightness = static_cast<int>(std::round(normalized));
+        }
+        else
+        {
+          monitor.hardwareBrightness = 50; // Native range indeterminate; use midpoint
+        }
         monitor.supportsHardwareBrightness = true;
         success = true;
         break;

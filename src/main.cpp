@@ -103,6 +103,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
   case WM_DISPLAYCHANGE:
   {
     BrightnessController::RefreshMonitors();
+    RestoreBrightnessOnStartup();
     break;
   }
   case WM_POWERBROADCAST:
@@ -110,6 +111,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
     if (wParam == PBT_APMRESUMEAUTOMATIC)
     {
       BrightnessController::RefreshMonitors();
+      RestoreBrightnessOnStartup();
     }
     break;
   }
