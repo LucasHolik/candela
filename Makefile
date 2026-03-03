@@ -16,7 +16,7 @@ RC = windres
 BUILD_DIR = build
 
 # Source files
-SRCS = src/main.cpp src/tray.cpp src/gui.cpp src/settings.cpp src/brightness.cpp
+SRCS = src/main.cpp src/tray.cpp src/gui.cpp src/settings.cpp src/brightness.cpp src/colortemp.cpp
 
 # Resource file
 RC_FILE = candela.rc

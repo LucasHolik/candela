@@ -15,6 +15,7 @@ struct Monitor
   HDC hdc; // Device Context for software brightness (Gamma)
   std::wstring deviceName;
   int softwareBrightness;  // Current software brightness level (1-100)
+  int softwareColorTemp;   // Current software color temperature in Kelvin (1200-6500)
   int hardwareBrightness;  // Current hardware brightness level (0-100)
   HANDLE hPhysicalMonitor; // Handle for hardware brightness (DDC/CI)
   bool supportsHardwareBrightness;
@@ -25,6 +26,7 @@ struct Monitor
       : hMonitor(nullptr),
         hdc(nullptr),
         softwareBrightness(100),
+        softwareColorTemp(6500),
         hardwareBrightness(50),
         hPhysicalMonitor(nullptr),
         supportsHardwareBrightness(false),
@@ -96,4 +98,30 @@ public:
    * @return Current brightness (1-100), or -1 if the index is invalid or an error occurs.
    */
   static int GetSoftwareBrightness(int monitorIndex);
+
+  /**
+   * @brief Sets the software color temperature for a specific monitor via gamma ramp.
+   * @param monitorIndex Index of the monitor in the list.
+   * @param kelvin Desired color temperature in Kelvin (1200-6500).
+   * @return true if the operation succeeded.
+   */
+  static bool SetSoftwareColorTemp(int monitorIndex, int kelvin);
+
+  /**
+   * @brief Gets the current software color temperature for a specific monitor.
+   * @param monitorIndex Index of the monitor in the list.
+   * @return Current temperature in Kelvin, or -1 if the index is invalid.
+   */
+  static int GetSoftwareColorTemp(int monitorIndex);
 };
+
+/**
+ * @brief Maps a linear brightness value (1-100) to a safe gamma factor (49-100).
+ *
+ * Exposed for use by ColorTempUtils::ApplyGammaRamp so brightness and color
+ * temperature are always written together in a single gamma ramp.
+ *
+ * @param brightness Input brightness 1-100
+ * @return Remapped value in [49, 100]; caller divides by 100 to get factor
+ */
+double MapBrightnessToSafeFactor(int brightness);

@@ -1,7 +1,20 @@
 # Candela Brightness Control
 
-Candela is a lightweight system tray application for Windows that allows you to control your monitor's brightness using both hardware (DDC/CI) and software (gamma) controls.
+Candela is a lightweight system tray application for Windows that lets you control each monitor's brightness and colour temperature using both hardware (DDC/CI) and software (gamma ramp) controls.
 Currently it is more 'function over form', it may be updated to look nicer in the future.
+
+## Features
+
+### Tray popup (left-click the tray icon)
+
+- **Software brightness** — adjusts brightness via the gamma ramp; works on all monitors
+- **Hardware brightness** — controls the monitor's backlight directly over DDC/CI; requires monitor support
+
+### Settings window (right-click → Settings)
+
+- **Show/hide sliders** — choose which brightness controls appear in the tray popup per monitor
+- **Colour temperature** — sets a warm or cool tint per monitor (1200 K–6500 K) via the gamma ramp; persists across restarts. Windows Night Light applies on top of this if enabled.
+- **Start on boot** — adds Candela to the Windows startup registry key
 
 ## Installation
 

@@ -6,6 +6,7 @@
 #include "tray.h"
 #include "settings.h"
 #include "brightness.h"
+#include "colortemp.h"
 #include "resource.h"
 
 // Global application instance
@@ -160,5 +161,6 @@ void RestoreBrightnessOnStartup()
     // Apply saved values
     BrightnessController::SetHardwareBrightness(static_cast<int>(i), settings.lastHardwareBrightness);
     BrightnessController::SetSoftwareBrightness(static_cast<int>(i), settings.lastSoftwareBrightness);
+    BrightnessController::SetSoftwareColorTemp(static_cast<int>(i), settings.lastStandardColorTemp);
   }
 }

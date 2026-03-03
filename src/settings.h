@@ -9,6 +9,7 @@ struct MonitorSettings
   bool showHardware = true;
   int lastSoftwareBrightness = 100; // Default to 100% for software (no dimming)
   int lastHardwareBrightness = 50;  // Default to 50% for hardware
+  int lastStandardColorTemp = 6500; // Default to 6500K (neutral/daylight)
 };
 
 class Settings

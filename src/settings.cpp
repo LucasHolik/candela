@@ -142,6 +142,10 @@ bool Settings::load()
           if (RegQueryValueEx(hMonitorKey, L"LastHardware", nullptr, nullptr, (LPBYTE)&dwVal, &dwSize) == ERROR_SUCCESS)
             settings.lastHardwareBrightness = (int)dwVal;
 
+          dwSize = sizeof(DWORD);
+          if (RegQueryValueEx(hMonitorKey, L"LastStandardColorTemp", nullptr, nullptr, (LPBYTE)&dwVal, &dwSize) == ERROR_SUCCESS)
+            settings.lastStandardColorTemp = (int)dwVal;
+
           RegCloseKey(hMonitorKey);
           m_monitorSettings[realName] = settings;
         }
@@ -206,6 +210,9 @@ bool Settings::save() const
 
         value = (DWORD)settings.lastHardwareBrightness;
         RegSetValueEx(hMonitorKey, L"LastHardware", 0, REG_DWORD, (const BYTE *)&value, sizeof(value));
+
+        value = (DWORD)settings.lastStandardColorTemp;
+        RegSetValueEx(hMonitorKey, L"LastStandardColorTemp", 0, REG_DWORD, (const BYTE *)&value, sizeof(value));
 
         RegCloseKey(hMonitorKey);
       }

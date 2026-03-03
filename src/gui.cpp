@@ -1,5 +1,6 @@
 #include "gui.h"
 #include "brightness.h"
+#include "colortemp.h"
 #include "settings.h"
 #include "resource.h"
 #include <commctrl.h>
@@ -34,6 +35,9 @@ namespace GuiConstants
   const int ID_SETTINGS_STRIDE = 10;
   const int OFFSET_SETTINGS_SW_CHECK = 1;
   const int OFFSET_SETTINGS_HW_CHECK = 2;
+  const int OFFSET_SETTINGS_CT_SLIDER = 3; // per-monitor horizontal color temp slider
+  const int OFFSET_SETTINGS_CT_VALUE = 4;  // per-monitor "6500K" value label
+  const int OFFSET_SETTINGS_CT_LABEL = 5;  // per-monitor "Color Temp:" static label
   const int ID_INFO_TEXT = 301;
 
   // Layout Constants
@@ -416,8 +420,8 @@ void ShowSettingsDialog(HWND parent)
   }
 
   int baseHeight = 60;
-  int perMonitorHeight = 80;
-  int width = 300;
+  int perMonitorHeight = 140;
+  int width = 380;
   int height = baseHeight + (monitorCount * perMonitorHeight) + 40;
 
   g_settings_hwnd = CreateWindowEx(
@@ -461,7 +465,7 @@ void ShowSettingsDialog(HWND parent)
     wchar_t buffer[64];
     swprintf_s(buffer, L"Display %d", i + 1);
     CreateWindowEx(0, L"BUTTON", buffer, BS_GROUPBOX | WS_CHILD | WS_VISIBLE,
-                   10, currentY, width - 40, 70, g_settings_hwnd, (HMENU)-1, g_hInstance, nullptr);
+                   10, currentY, 340, 130, g_settings_hwnd, (HMENU)-1, g_hInstance, nullptr);
 
     // Software Checkbox
     HWND swCheck = CreateWindowEx(
@@ -480,6 +484,35 @@ void ShowSettingsDialog(HWND parent)
         g_settings_hwnd, (HMENU)(intptr_t)(baseID + OFFSET_SETTINGS_HW_CHECK), g_hInstance, nullptr);
 
     SendMessage(hwCheck, BM_SETCHECK, settings.showHardware ? BST_CHECKED : BST_UNCHECKED, 0);
+
+    // Color Temperature Label
+    CreateWindowEx(
+        0, WC_STATIC, L"Color Temp:",
+        WS_CHILD | WS_VISIBLE | SS_LEFT,
+        20, currentY + 72, 80, 16,
+        g_settings_hwnd, (HMENU)(intptr_t)(baseID + OFFSET_SETTINGS_CT_LABEL), g_hInstance, nullptr);
+
+    // Color Temperature Value Label
+    wchar_t ctBuf[20];
+    swprintf_s(ctBuf, L"%dK", settings.lastStandardColorTemp);
+    HWND hCTValue = CreateWindowEx(
+        0, WC_STATIC, ctBuf,
+        WS_CHILD | WS_VISIBLE | SS_LEFT,
+        110, currentY + 72, 80, 16,
+        g_settings_hwnd, (HMENU)(intptr_t)(baseID + OFFSET_SETTINGS_CT_VALUE), g_hInstance, nullptr);
+    (void)hCTValue;
+
+    // Color Temperature Slider
+    HWND hCTSlider = CreateWindowEx(
+        0, TRACKBAR_CLASS, L"",
+        WS_CHILD | WS_VISIBLE | TBS_HORZ | TBS_AUTOTICKS | TBS_BOTH,
+        20, currentY + 90, 300, 26,
+        g_settings_hwnd, (HMENU)(intptr_t)(baseID + OFFSET_SETTINGS_CT_SLIDER), g_hInstance, nullptr);
+
+    SendMessage(hCTSlider, TBM_SETRANGE, TRUE,
+                MAKELONG(ColorTempUtils::KELVIN_MIN, ColorTempUtils::KELVIN_MAX));
+    SendMessage(hCTSlider, TBM_SETPOS, TRUE, settings.lastStandardColorTemp);
+    SendMessage(hCTSlider, TBM_SETTICFREQ, 100, 0);
 
     currentY += perMonitorHeight;
   }
@@ -541,6 +574,40 @@ LRESULT CALLBACK SettingsProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
           g_settings.setMonitorSettings(deviceName, settings);
           g_settings.save();
         }
+      }
+    }
+    break;
+  }
+  case WM_HSCROLL:
+  {
+    int id = GetDlgCtrlID((HWND)lParam);
+    int kelvin = (int)SendMessage((HWND)lParam, TBM_GETPOS, 0, 0);
+    // Snap to nearest 100K step
+    kelvin = std::max(ColorTempUtils::KELVIN_MIN, (kelvin / 100) * 100);
+
+    if (id >= ID_SETTINGS_MONITOR_BASE)
+    {
+      int monIdx = (id - ID_SETTINGS_MONITOR_BASE) / ID_SETTINGS_STRIDE;
+      int offset = (id - ID_SETTINGS_MONITOR_BASE) % ID_SETTINGS_STRIDE;
+
+      if (offset == OFFSET_SETTINGS_CT_SLIDER)
+      {
+        BrightnessController::SetSoftwareColorTemp(monIdx, kelvin);
+
+        const auto &monitors = BrightnessController::GetMonitors();
+        if (monIdx < (int)monitors.size())
+        {
+          MonitorSettings ms = g_settings.getMonitorSettings(monitors[monIdx].deviceName);
+          ms.lastStandardColorTemp = kelvin;
+          g_settings.setMonitorSettings(monitors[monIdx].deviceName, ms);
+          g_settings.save();
+        }
+
+        int valueID = ID_SETTINGS_MONITOR_BASE + (monIdx * ID_SETTINGS_STRIDE) + OFFSET_SETTINGS_CT_VALUE;
+        HWND hValue = GetDlgItem(hwnd, valueID);
+        wchar_t buf[20];
+        swprintf_s(buf, L"%dK", kelvin);
+        SetWindowText(hValue, buf);
       }
     }
     break;

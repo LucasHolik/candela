@@ -1,4 +1,5 @@
 #include "brightness.h"
+#include "colortemp.h"
 #include <windows.h>
 #include <vector>
 #include <string>
@@ -17,24 +18,7 @@ namespace
   const int MIN_INPUT_BRIGHTNESS = 1;
 }
 
-// Global internal state
-static std::vector<Monitor> g_monitors;
-static bool g_initialized = false;
-
-// Forward declaration of the callback
-BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT, LPARAM dwData);
-
-// -----------------------------------------------------------------------------------------------
-// Helper Functions
-// -----------------------------------------------------------------------------------------------
-
-/**
- * @brief Maps a linear brightness value (1-100) to a safe gamma range (MIN_SAFE_SOFTWARE_BRIGHTNESS-100).
- *
- * @param brightness Input brightness 1-100
- * @return Remapped brightness value
- */
-static double MapBrightnessToSafeRange(int brightness)
+double MapBrightnessToSafeFactor(int brightness)
 {
   // Clamp input
   brightness = std::max(MIN_INPUT_BRIGHTNESS, std::min(brightness, MAX_BRIGHTNESS));
@@ -46,6 +30,18 @@ static double MapBrightnessToSafeRange(int brightness)
           (static_cast<double>(MAX_BRIGHTNESS - MIN_SAFE_SOFTWARE_BRIGHTNESS)) /
           (static_cast<double>(MAX_BRIGHTNESS - MIN_INPUT_BRIGHTNESS)));
 }
+
+// Global internal state
+static std::vector<Monitor> g_monitors;
+static bool g_initialized = false;
+
+// Forward declaration of the callback
+BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT, LPARAM dwData);
+
+// -----------------------------------------------------------------------------------------------
+// Helper Functions
+// (MapBrightnessToSafeFactor defined above, before the anonymous namespace, for external linkage)
+// -----------------------------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------------------------
 // BrightnessController Implementation
@@ -123,30 +119,30 @@ bool BrightnessController::SetSoftwareBrightness(int monitorIndex, int brightnes
   if (!monitor.hdc)
     return false;
 
-  // Clamp brightness
   brightness = std::max(MIN_INPUT_BRIGHTNESS, std::min(brightness, MAX_BRIGHTNESS));
-
   monitor.softwareBrightness = brightness;
+  return ColorTempUtils::ApplyGammaRamp(monitor.hdc, brightness, monitor.softwareColorTemp);
+}
 
-  // Calculate factor based on remapped safe range
-  double remapped = MapBrightnessToSafeRange(brightness);
-  double factor = remapped / 100.0;
+bool BrightnessController::SetSoftwareColorTemp(int monitorIndex, int kelvin)
+{
+  if (monitorIndex < 0 || static_cast<size_t>(monitorIndex) >= g_monitors.size())
+    return false;
 
-  // Build the gamma ramp
-  WORD newGammaRamp[256 * 3];
-  for (int i = 0; i < 256; i++)
-  {
-    int value = static_cast<int>(i * factor * 257);
-    // Clamp to WORD range
-    value = std::max(0, std::min(value, 65535));
+  Monitor &monitor = g_monitors[monitorIndex];
+  if (!monitor.hdc)
+    return false;
 
-    // R, G, B channels
-    newGammaRamp[i] = static_cast<WORD>(value);
-    newGammaRamp[i + 256] = static_cast<WORD>(value);
-    newGammaRamp[i + 512] = static_cast<WORD>(value);
-  }
+  kelvin = std::max(ColorTempUtils::KELVIN_MIN, std::min(kelvin, ColorTempUtils::KELVIN_MAX));
+  monitor.softwareColorTemp = kelvin;
+  return ColorTempUtils::ApplyGammaRamp(monitor.hdc, monitor.softwareBrightness, kelvin);
+}
 
-  return SetDeviceGammaRamp(monitor.hdc, newGammaRamp);
+int BrightnessController::GetSoftwareColorTemp(int monitorIndex)
+{
+  if (monitorIndex < 0 || static_cast<size_t>(monitorIndex) >= g_monitors.size())
+    return -1;
+  return g_monitors[monitorIndex].softwareColorTemp;
 }
 
 bool BrightnessController::SetHardwareBrightness(int monitorIndex, int brightness)
