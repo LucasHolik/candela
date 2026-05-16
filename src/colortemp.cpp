@@ -37,23 +37,30 @@ namespace ColorTempUtils
     b = std::max(0.0, std::min(b, 1.0));
   }
 
-  bool ApplyGammaRamp(HDC hdc, int brightness, int kelvin)
+  bool ApplyGammaRamp(HDC hdc, const GammaRampOptions &opts)
   {
     if (!hdc)
       return false;
 
-    double r, g, b;
-    KelvinToRGB(kelvin, r, g, b);
+    double rMul, gMul, bMul;
+    KelvinToRGB(opts.kelvin, rMul, gMul, bMul);
 
-    double factor = MapBrightnessToSafeFactor(brightness) / 100.0;
+    double brightnessFactor = MapBrightnessToSafeFactor(opts.brightness) / 100.0;
 
     WORD ramp[256 * 3];
     for (int i = 0; i < 256; i++)
     {
-      double base = i * factor * 257.0;
-      ramp[i] = (WORD)std::max(0.0, std::min(base * r, 65535.0));
-      ramp[i + 256] = (WORD)std::max(0.0, std::min(base * g, 65535.0));
-      ramp[i + 512] = (WORD)std::max(0.0, std::min(base * b, 65535.0));
+      // Stage 2: software brightness
+      double base = i * brightnessFactor * 257.0;
+
+      // Stage 3: colour temperature (per-channel tint)
+      double R = base * rMul;
+      double G = base * gMul;
+      double B = base * bMul;
+
+      ramp[i] = (WORD)std::max(0.0, std::min(R, 65535.0));
+      ramp[i + 256] = (WORD)std::max(0.0, std::min(G, 65535.0));
+      ramp[i + 512] = (WORD)std::max(0.0, std::min(B, 65535.0));
     }
 
     return SetDeviceGammaRamp(hdc, ramp) != FALSE;

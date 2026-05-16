@@ -38,6 +38,20 @@ static bool g_initialized = false;
 // Forward declaration of the callback
 BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT, LPARAM dwData);
 
+// Single point of truth for rebuilding a monitor's gamma ramp. Every code
+// path that mutates brightness or colour temp funnels through this helper so
+// the stages are always applied in the same order.
+static bool ApplyMonitorRamp(Monitor &m)
+{
+  if (!m.hdc)
+    return false;
+
+  ColorTempUtils::GammaRampOptions opts;
+  opts.brightness = m.softwareBrightness;
+  opts.kelvin = m.softwareColorTemp;
+  return ColorTempUtils::ApplyGammaRamp(m.hdc, opts);
+}
+
 // -----------------------------------------------------------------------------------------------
 // Helper Functions
 // (MapBrightnessToSafeFactor defined above, before the anonymous namespace, for external linkage)
@@ -121,7 +135,7 @@ bool BrightnessController::SetSoftwareBrightness(int monitorIndex, int brightnes
 
   brightness = std::max(MIN_INPUT_BRIGHTNESS, std::min(brightness, MAX_BRIGHTNESS));
   monitor.softwareBrightness = brightness;
-  return ColorTempUtils::ApplyGammaRamp(monitor.hdc, brightness, monitor.softwareColorTemp);
+  return ApplyMonitorRamp(monitor);
 }
 
 bool BrightnessController::SetSoftwareColorTemp(int monitorIndex, int kelvin)
@@ -135,7 +149,7 @@ bool BrightnessController::SetSoftwareColorTemp(int monitorIndex, int kelvin)
 
   kelvin = std::max(ColorTempUtils::KELVIN_MIN, std::min(kelvin, ColorTempUtils::KELVIN_MAX));
   monitor.softwareColorTemp = kelvin;
-  return ColorTempUtils::ApplyGammaRamp(monitor.hdc, monitor.softwareBrightness, kelvin);
+  return ApplyMonitorRamp(monitor);
 }
 
 int BrightnessController::GetSoftwareColorTemp(int monitorIndex)

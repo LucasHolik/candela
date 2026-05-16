@@ -1,6 +1,7 @@
 #include "gui.h"
 #include "brightness.h"
 #include "colortemp.h"
+#include "bwfilter.h"
 #include "settings.h"
 #include "resource.h"
 #include <commctrl.h>
@@ -29,8 +30,12 @@ namespace GuiConstants
   const int OFFSET_HW_VALUE = 6;
   const int OFFSET_MONITOR_LABEL = 7;
 
+  // Fixed (non-strided) IDs for global controls
+  const int ID_BW_TOGGLE = 1900; // popup: global "B&W" checkbox
+
   // ID Constants for Settings Window
   const int ID_SETTINGS_STARTUP = 201;
+  const int ID_SETTINGS_SHOW_BW = 202; // "Show B&W toggle in tray popup" checkbox
   const int ID_SETTINGS_MONITOR_BASE = 3000;
   const int ID_SETTINGS_STRIDE = 10;
   const int OFFSET_SETTINGS_SW_CHECK = 1;
@@ -122,7 +127,13 @@ void ShowBrightnessSlider(HWND parent)
   // Calculate window dimensions
   using namespace GuiConstants;
   int totalWidth = PADDING;
-  int totalHeight = WINDOW_BASE_HEIGHT;
+
+  // Reserve a row at the bottom of the popup for the B&W toggle button.
+  bool showBWToggle = g_settings.getShowBWToggle();
+  const int BW_BUTTON_HEIGHT = 28;
+  int bottomOffset = showBWToggle ? (BW_BUTTON_HEIGHT + PADDING) : 0;
+
+  int totalHeight = WINDOW_BASE_HEIGHT + bottomOffset;
 
   // First pass: calculate total width required
   for (int i = 0; i < monitorCount; i++)
@@ -286,6 +297,21 @@ void ShowBrightnessSlider(HWND parent)
     currentX += groupWidth + PADDING;
   }
 
+  // Full-width B&W toggle button spanning the bottom of the popup. Uses
+  // BS_PUSHLIKE so it looks like a regular button but reflects its state
+  // by staying visually pressed in when the filter is on.
+  if (showBWToggle)
+  {
+    HWND hBW = CreateWindowEx(
+        0, L"BUTTON", L"B&&W",
+        BS_AUTOCHECKBOX | BS_PUSHLIKE | WS_CHILD | WS_VISIBLE | WS_TABSTOP,
+        PADDING, WINDOW_BASE_HEIGHT,
+        totalWidth - 2 * PADDING, BW_BUTTON_HEIGHT,
+        g_hwnd_brightness, (HMENU)(intptr_t)ID_BW_TOGGLE, g_hInstance, nullptr);
+    SendMessage(hBW, BM_SETCHECK,
+                g_settings.getBWEnabled() ? BST_CHECKED : BST_UNCHECKED, 0);
+  }
+
   ShowWindow(g_hwnd_brightness, SW_SHOW);
   UpdateWindow(g_hwnd_brightness);
   SetForegroundWindow(g_hwnd_brightness);
@@ -297,6 +323,17 @@ LRESULT CALLBACK BrightnessSliderProc(HWND hwnd, UINT message, WPARAM wParam, LP
 
   switch (message)
   {
+  case WM_COMMAND:
+  {
+    if (HIWORD(wParam) == BN_CLICKED && LOWORD(wParam) == ID_BW_TOGGLE)
+    {
+      bool state = (SendMessage((HWND)lParam, BM_GETCHECK, 0, 0) == BST_CHECKED);
+      BWFilter::SetEnabled(state);
+      g_settings.setBWEnabled(state);
+      g_settings.save();
+    }
+    break;
+  }
   case WM_HSCROLL:
   case WM_VSCROLL:
   {
@@ -419,7 +456,7 @@ void ShowSettingsDialog(HWND parent)
     g_settings_class_registered = true;
   }
 
-  int baseHeight = 60;
+  int baseHeight = 90;
   int perMonitorHeight = 140;
   int width = 380;
   int height = baseHeight + (monitorCount * perMonitorHeight) + 40;
@@ -455,7 +492,17 @@ void ShowSettingsDialog(HWND parent)
 
   SendMessage(g_hwnd_startup_checkbox, BM_SETCHECK, g_settings.getStartOnBoot() ? BST_CHECKED : BST_UNCHECKED, 0);
 
-  int currentY = 50;
+  // Show-B&W-toggle checkbox. B&W is system-wide (Magnification API), so the
+  // setting is global rather than per-monitor.
+  HWND hShowBW = CreateWindowEx(
+      0, L"BUTTON", L"Show B&&W toggle in tray popup (all monitors)",
+      BS_AUTOCHECKBOX | WS_CHILD | WS_VISIBLE,
+      10, 45, 340, 25,
+      g_settings_hwnd, (HMENU)(intptr_t)ID_SETTINGS_SHOW_BW, g_hInstance, nullptr);
+  SendMessage(hShowBW, BM_SETCHECK,
+              g_settings.getShowBWToggle() ? BST_CHECKED : BST_UNCHECKED, 0);
+
+  int currentY = 80;
   for (int i = 0; i < monitorCount; i++)
   {
     MonitorSettings settings = g_settings.getMonitorSettings(monitors[i].deviceName);
@@ -535,6 +582,13 @@ LRESULT CALLBACK SettingsProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
       if (controlId == ID_SETTINGS_STARTUP)
       {
         g_settings.setStartOnBoot(SendMessage(g_hwnd_startup_checkbox, BM_GETCHECK, 0, 0) == BST_CHECKED);
+        g_settings.save();
+      }
+      else if (controlId == ID_SETTINGS_SHOW_BW)
+      {
+        bool state = (SendMessage((HWND)lParam, BM_GETCHECK, 0, 0) == BST_CHECKED);
+        g_settings.setShowBWToggle(state);
+        // Hiding the toggle does not clear the filter — that's the popup's job.
         g_settings.save();
       }
       else if (controlId >= ID_SETTINGS_MONITOR_BASE)

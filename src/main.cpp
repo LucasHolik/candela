@@ -7,6 +7,7 @@
 #include "settings.h"
 #include "brightness.h"
 #include "colortemp.h"
+#include "bwfilter.h"
 #include "resource.h"
 
 // Global application instance
@@ -32,6 +33,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
 
   // Load settings
   g_settings.load();
+
+  // Initialise the Magnification runtime once for the lifetime of the process
+  // (used by BWFilter to apply the system-wide grayscale colour effect).
+  BWFilter::Initialize();
 
   // Register window class
   const wchar_t CLASS_NAME[] = L"CandelaTrayWindowClass";
@@ -89,6 +94,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
 
   // Restore brightness/gamma settings
   BrightnessController::Cleanup();
+
+  // Clear the grayscale colour effect and release Magnification resources.
+  BWFilter::Cleanup();
 
   return (int)msg.wParam;
 }
@@ -152,15 +160,19 @@ void RestoreBrightnessOnStartup()
     return;
   }
 
-  // Apply saved brightness settings per monitor
+  // Apply saved brightness settings per monitor, in the documented order:
+  // hardware brightness → software brightness → colour temp.
   const auto &monitors = BrightnessController::GetMonitors();
   for (size_t i = 0; i < monitors.size(); ++i)
   {
     MonitorSettings settings = g_settings.getMonitorSettings(monitors[i].deviceName);
 
-    // Apply saved values
     BrightnessController::SetHardwareBrightness(static_cast<int>(i), settings.lastHardwareBrightness);
     BrightnessController::SetSoftwareBrightness(static_cast<int>(i), settings.lastSoftwareBrightness);
     BrightnessController::SetSoftwareColorTemp(static_cast<int>(i), settings.lastStandardColorTemp);
   }
+
+  // System-wide B&W filter (Magnification API). Independent of the gamma
+  // pipeline above; sits on top of the final composited desktop.
+  BWFilter::SetEnabled(g_settings.getBWEnabled());
 }

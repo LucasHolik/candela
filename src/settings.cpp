@@ -72,6 +72,21 @@ bool Settings::load()
       m_startOnBoot = (value != 0);
     }
 
+    // Load B&W filter visibility + state
+    size = sizeof(DWORD);
+    if (RegQueryValueEx(hKey, L"ShowBWToggle", nullptr, nullptr,
+                        reinterpret_cast<LPBYTE>(&value), &size) == ERROR_SUCCESS)
+    {
+      m_showBWToggle = (value != 0);
+    }
+
+    size = sizeof(DWORD);
+    if (RegQueryValueEx(hKey, L"BWEnabled", nullptr, nullptr,
+                        reinterpret_cast<LPBYTE>(&value), &size) == ERROR_SUCCESS)
+    {
+      m_bwEnabled = (value != 0);
+    }
+
     // Load Monitors
     HKEY hMonitorsKey;
     result = RegOpenKeyEx(hKey, MONITORS_SUBKEY, 0, KEY_READ, &hMonitorsKey);
@@ -181,6 +196,15 @@ bool Settings::save() const
   // Save start on boot
   value = m_startOnBoot ? 1 : 0;
   RegSetValueEx(hKey, START_ON_BOOT_VALUE, 0, REG_DWORD,
+                reinterpret_cast<const BYTE *>(&value), sizeof(value));
+
+  // Save B&W filter visibility + state
+  value = m_showBWToggle ? 1 : 0;
+  RegSetValueEx(hKey, L"ShowBWToggle", 0, REG_DWORD,
+                reinterpret_cast<const BYTE *>(&value), sizeof(value));
+
+  value = m_bwEnabled ? 1 : 0;
+  RegSetValueEx(hKey, L"BWEnabled", 0, REG_DWORD,
                 reinterpret_cast<const BYTE *>(&value), sizeof(value));
 
   // Save Monitors

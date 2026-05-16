@@ -9,11 +9,13 @@ Currently it is more 'function over form', it may be updated to look nicer in th
 
 - **Software brightness** — adjusts brightness via the gamma ramp; works on all monitors
 - **Hardware brightness** — controls the monitor's backlight directly over DDC/CI; requires monitor support
+- **B&W toggle** _(optional, off by default)_ — a full-width button at the bottom of the popup that flips the entire desktop to true grayscale. Enable its visibility from the Settings window.
 
 ### Settings window (right-click → Settings)
 
 - **Show/hide sliders** — choose which brightness controls appear in the tray popup per monitor
 - **Colour temperature** — sets a warm or cool tint per monitor (1200 K–6500 K) via the gamma ramp; persists across restarts. Windows Night Light applies on top of this if enabled.
+- **Show B&W toggle in tray popup** — reveals the system-wide grayscale button in the tray popup. The filter itself is applied via the Windows Magnification API (the same mechanism the built-in Colour Filters accessibility feature uses), so it is necessarily global across all monitors. Colour temperature still composes on top of grayscale.
 - **Start on boot** — adds Candela to the Windows startup registry key
 
 ## Installation
