@@ -87,6 +87,51 @@ static LRESULT CALLBACK SliderKeyboardProc(HWND hwnd, UINT msg, WPARAM wParam, L
   return DefSubclassProc(hwnd, msg, wParam, lParam);
 }
 
+// Reflects the controller's cached hardware brightness state in a popup slider
+// and its value label: position and percentage when supported, disabled and
+// "N/A" when not.
+static void SyncHardwareSlider(HWND hSlider, HWND hValue, int monitorIndex)
+{
+  using namespace GuiConstants;
+
+  int val = BrightnessController::GetHardwareBrightness(monitorIndex);
+  if (val < 0)
+    val = 50; // Defensive fallback
+  SendMessage(hSlider, TBM_SETPOS, TRUE, SLIDER_MAX - val); // Invert: top = 100%, bottom = 0%
+
+  const auto &monitors = BrightnessController::GetMonitors();
+  bool supported = monitorIndex < (int)monitors.size() &&
+                   monitors[monitorIndex].supportsHardwareBrightness;
+  EnableWindow(hSlider, supported ? TRUE : FALSE);
+
+  if (supported)
+  {
+    wchar_t buffer[20];
+    swprintf_s(buffer, L"%d%%", val);
+    SetWindowText(hValue, buffer);
+  }
+  else
+  {
+    SetWindowText(hValue, L"N/A");
+  }
+}
+
+void UpdateHardwareSlider(int monitorIndex)
+{
+  using namespace GuiConstants;
+
+  if (!g_hwnd_brightness || !IsWindow(g_hwnd_brightness))
+    return;
+
+  int baseID = ID_SLIDER_BASE + (monitorIndex * ID_SLIDER_STRIDE);
+  HWND hSlider = GetDlgItem(g_hwnd_brightness, baseID + OFFSET_HW_SLIDER);
+  HWND hValue = GetDlgItem(g_hwnd_brightness, baseID + OFFSET_HW_VALUE);
+  if (!hSlider || !hValue)
+    return; // Hardware slider hidden for this monitor
+
+  SyncHardwareSlider(hSlider, hValue, monitorIndex);
+}
+
 void ShowBrightnessSlider(HWND parent)
 {
   const auto &monitors = BrightnessController::GetMonitors();
@@ -275,23 +320,10 @@ void ShowBrightnessSlider(HWND parent)
           sliderX, baseY + SLIDER_HEIGHT + 20, SLIDER_GROUP_WIDTH, 20,
           g_hwnd_brightness, (HMENU)(intptr_t)(baseID + OFFSET_HW_VALUE), g_hInstance, nullptr);
 
-      int val = BrightnessController::GetHardwareBrightness(i);
-      if (val < 0)
-        val = 50; // Defensive fallback
       SendMessage(hSlider, TBM_SETRANGE, TRUE, MAKELONG(HW_SLIDER_MIN, SLIDER_MAX));
-      SendMessage(hSlider, TBM_SETPOS, TRUE, SLIDER_MAX - val); // Invert: top = 100%, bottom = 0%
       SendMessage(hSlider, TBM_SETTICFREQ, 10, 0);
       SetWindowSubclass(hSlider, SliderKeyboardProc, 0, 0);
-
-      wchar_t buffer[20];
-      swprintf_s(buffer, L"%d%%", val);
-      SetWindowText(hValue, buffer);
-
-      if (!monitors[i].supportsHardwareBrightness)
-      {
-        EnableWindow(hSlider, FALSE);
-        SetWindowText(hValue, L"N/A");
-      }
+      SyncHardwareSlider(hSlider, hValue, i);
     }
 
     currentX += groupWidth + PADDING;

@@ -52,6 +52,47 @@ static bool ApplyMonitorRamp(Monitor &m)
   return ColorTempUtils::ApplyGammaRamp(m.hdc, opts);
 }
 
+// Queries DDC/CI for the monitor's native brightness range and current level,
+// making up to `attempts` tries 50ms apart. On success the normalised value is
+// cached and hardware brightness is marked as supported; on failure the monitor
+// is left unsupported (and pending, if it has a physical handle).
+static bool QueryHardwareBrightness(Monitor &m, int attempts)
+{
+  if (!m.hPhysicalMonitor)
+    return false;
+
+  for (int attempt = 1; attempt <= attempts; ++attempt)
+  {
+    DWORD minB, curB, maxB;
+    if (GetMonitorBrightness(m.hPhysicalMonitor, &minB, &curB, &maxB))
+    {
+      m.hwNativeMin = minB;
+      m.hwNativeMax = maxB;
+      if (maxB > minB)
+      {
+        // Clamp curB to [minB, maxB] before arithmetic: some DDC/CI implementations
+        // return values slightly outside the reported range, and unsigned underflow
+        // on DWORD subtraction would produce UB when cast back to int.
+        curB = std::max(minB, std::min(curB, maxB));
+        double normalized = static_cast<double>(curB - minB) / (maxB - minB) * 100.0;
+        m.hardwareBrightness = static_cast<int>(std::round(normalized));
+      }
+      else
+      {
+        m.hardwareBrightness = 50; // Native range indeterminate; use midpoint
+      }
+      m.supportsHardwareBrightness = true;
+      return true;
+    }
+
+    if (attempt < attempts)
+      Sleep(50); // Wait 50ms before retrying
+  }
+
+  m.supportsHardwareBrightness = false;
+  return false;
+}
+
 // -----------------------------------------------------------------------------------------------
 // Helper Functions
 // (MapBrightnessToSafeFactor defined above, before the anonymous namespace, for external linkage)
@@ -113,6 +154,32 @@ void BrightnessController::Cleanup()
   }
   g_monitors.clear();
   g_initialized = false;
+}
+
+void BrightnessController::ResetGammaRamps()
+{
+  for (auto &monitor : g_monitors)
+  {
+    ColorTempUtils::ResetGammaRamp(monitor.hdc);
+  }
+}
+
+bool BrightnessController::IsHardwareProbePending(int monitorIndex)
+{
+  if (monitorIndex < 0 || static_cast<size_t>(monitorIndex) >= g_monitors.size())
+    return false;
+
+  const Monitor &monitor = g_monitors[monitorIndex];
+  return monitor.hPhysicalMonitor != nullptr && !monitor.supportsHardwareBrightness;
+}
+
+bool BrightnessController::ProbeHardwareBrightness(int monitorIndex)
+{
+  if (!IsHardwareProbePending(monitorIndex))
+    return false;
+
+  // A single attempt: callers space retries out over time instead of blocking here.
+  return QueryHardwareBrightness(g_monitors[monitorIndex], 1);
 }
 
 const std::vector<Monitor> &BrightnessController::GetMonitors()
@@ -293,45 +360,9 @@ BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT, LPARAM 
     }
   }
 
-  // 2. Hardware Brightness
-  if (monitor.hPhysicalMonitor != nullptr)
-  {
-    DWORD minB, curB, maxB;
-    bool success = false;
-    for (int attempt = 1; attempt <= 5; ++attempt)
-    {
-      if (GetMonitorBrightness(monitor.hPhysicalMonitor, &minB, &curB, &maxB))
-      {
-        monitor.hwNativeMin = minB;
-        monitor.hwNativeMax = maxB;
-        if (maxB > minB)
-        {
-          // Clamp curB to [minB, maxB] before arithmetic: some DDC/CI implementations
-          // return values slightly outside the reported range, and unsigned underflow
-          // on DWORD subtraction would produce UB when cast back to int.
-          curB = std::max(minB, std::min(curB, maxB));
-          double normalized = static_cast<double>(curB - minB) / (maxB - minB) * 100.0;
-          monitor.hardwareBrightness = static_cast<int>(std::round(normalized));
-        }
-        else
-        {
-          monitor.hardwareBrightness = 50; // Native range indeterminate; use midpoint
-        }
-        monitor.supportsHardwareBrightness = true;
-        success = true;
-        break;
-      }
-      else
-      {
-        Sleep(50); // Wait 50ms before retrying
-      }
-    }
-
-    if (!success)
-    {
-      monitor.supportsHardwareBrightness = false;
-    }
-  }
+  // 2. Hardware Brightness. If the monitor doesn't answer (e.g. it is still
+  // re-syncing after a mode change) it stays pending and can be re-probed later.
+  QueryHardwareBrightness(monitor, 5);
 
   monitors->push_back(monitor);
   return TRUE;

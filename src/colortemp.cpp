@@ -66,4 +66,21 @@ namespace ColorTempUtils
     return SetDeviceGammaRamp(hdc, ramp) != FALSE;
   }
 
+  bool ResetGammaRamp(HDC hdc)
+  {
+    if (!hdc)
+      return false;
+
+    WORD ramp[256 * 3];
+    for (int i = 0; i < 256; i++)
+    {
+      WORD value = static_cast<WORD>(i * 257); // 0..255 -> 0..65535
+      ramp[i] = value;
+      ramp[i + 256] = value;
+      ramp[i + 512] = value;
+    }
+
+    return SetDeviceGammaRamp(hdc, ramp) != FALSE;
+  }
+
 } // namespace ColorTempUtils
