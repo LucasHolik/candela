@@ -18,6 +18,9 @@ struct Monitor
   int softwareColorTemp;   // Current software color temperature in Kelvin (1200-6500)
   int hardwareBrightness;  // Current hardware brightness level (0-100)
   HANDLE hPhysicalMonitor; // Handle for hardware brightness (DDC/CI)
+  // True once the monitor has answered a DDC/CI brightness query. A monitor with
+  // a physical handle that hasn't answered yet is "pending", not unsupported —
+  // see BrightnessController::IsHardwareProbePending.
   bool supportsHardwareBrightness;
   DWORD hwNativeMin; // Monitor's native DDC/CI brightness minimum
   DWORD hwNativeMax; // Monitor's native DDC/CI brightness maximum
@@ -62,6 +65,39 @@ public:
    * @brief Cleans up resources (device contexts, physical monitor handles).
    */
   static void Cleanup();
+
+  /**
+   * @brief Restores every monitor's gamma ramp to identity, undoing software
+   *        brightness and colour temperature.
+   *
+   * Intended for shutdown so adjustments don't outlive the app. Cached
+   * per-monitor values are left untouched; call Cleanup() afterwards.
+   */
+  static void ResetGammaRamps();
+
+  /**
+   * @brief Reports whether a monitor's DDC/CI support is still unconfirmed.
+   *
+   * True when a physical monitor handle was obtained but the monitor hasn't
+   * answered a brightness query — typically because it was still re-syncing
+   * after a display mode change. Such monitors are worth re-probing later
+   * rather than being written off as unsupported.
+   *
+   * @param monitorIndex Index of the monitor in the list.
+   * @return true if the monitor should be re-probed.
+   */
+  static bool IsHardwareProbePending(int monitorIndex);
+
+  /**
+   * @brief Makes a single attempt to read a pending monitor's hardware brightness.
+   *
+   * On success the monitor's native range and current level are cached and
+   * hardware brightness is marked as supported.
+   *
+   * @param monitorIndex Index of the monitor in the list.
+   * @return true if the monitor answered.
+   */
+  static bool ProbeHardwareBrightness(int monitorIndex);
 
   /**
    * @brief Retrieves the list of currently detected monitors.

@@ -28,4 +28,12 @@ namespace ColorTempUtils
 
   void KelvinToRGB(int kelvin, double &r, double &g, double &b);
   bool ApplyGammaRamp(HDC hdc, const GammaRampOptions &opts);
+
+  /**
+   * @brief Writes a linear (identity) gamma ramp, removing every software stage.
+   *
+   * Not equivalent to ApplyGammaRamp with default options: KelvinToRGB(6500)
+   * is a slight tint rather than an exact identity.
+   */
+  bool ResetGammaRamp(HDC hdc);
 }
